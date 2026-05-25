@@ -83,10 +83,5 @@ notes_refurb/
 ├── 3-exploitation/
 ├── 4-post-exploitation/
 ├── 5-lateral-movement/
-├── 6-report-writing/
-└── _archive/                       ← original PDF sources
+└── 6-report-writing/
 ```
-
-## Acknowledgements
-
-Structural inspiration from [sachinn403/HTB-CPTS-Notes](https://github.com/sachinn403/HTB-CPTS-Notes). Source content distilled from personal CIS4201 course notes and HTB CPTS path lab work.
