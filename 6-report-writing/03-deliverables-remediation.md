@@ -1,16 +1,10 @@
----
-title: "Deliverables and Remediation"
-stage: "6 - Report Writing"
-tags: [cvss, remediation, retest, evidence, deliverables]
----
-
-# Deliverables and Remediation
+## Deliverables and Remediation
 
 A report isn't finished when the PDF is signed. The full deliverable set drives the client through *fix → verify → close*, and that's what generates the next engagement.
 
 ---
 
-## Standard Deliverables
+### Standard Deliverables
 
 | Artifact | Purpose | Audience |
 |----------|---------|----------|
@@ -21,9 +15,9 @@ A report isn't finished when the PDF is signed. The full deliverable set drives 
 | **Scanner output** | Nessus / OpenVAS / Burp scans in native format. | Engineers |
 | **Retest report** | Delta report after remediation. | Both |
 
-## Risk Scoring
+### Risk Scoring
 
-### CVSS v3.1 (the current default)
+#### CVSS v3.1 (the current default)
 
 Score = base × temporal × environmental modifiers.
 
@@ -39,13 +33,13 @@ Severity bands:
 
 Always include the **CVSS vector string** alongside the number — others should be able to recompute.
 
-```text
+```bash
 CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H   = 9.8 Critical
 ```
 
 CVSS v4.0 is gaining traction; if the client requests it, use the matching calculator. Pure CVSS misses business context, so almost every mature program augments with their own **Likelihood × Impact** matrix.
 
-### Likelihood × Impact (the contextual fix)
+#### Likelihood × Impact (the contextual fix)
 
 | Likelihood | Impact | Risk |
 |-----------|--------|------|
@@ -62,7 +56,7 @@ CVSS v4.0 is gaining traction; if the client requests it, use the matching calcu
 Likelihood factors: required privilege, exploit availability, accessibility, detection presence.
 Impact factors: data sensitivity, blast radius, regulatory exposure, recovery cost.
 
-## Writing Remediation Guidance
+### Writing Remediation Guidance
 
 Bad: *"Apply patches."*
 Better: *"Apply Microsoft security update KB5005565 (released Sept 2021) to all Server 2016 Domain Controllers to address CVE-2021-36934."*
@@ -76,7 +70,7 @@ A good remediation block answers:
 4. **By when** (deadline tied to severity SLAs).
 5. **Compensating controls** if a fast fix isn't possible.
 
-## Evidence
+### Evidence
 
 For each finding:
 
@@ -87,7 +81,7 @@ For each finding:
 
 Store the evidence pack alongside the report — auditors and retest teams need it.
 
-## Retest Process
+### Retest Process
 
 1. Client signals "ready for retest" on specific findings.
 2. Test only those findings (re-running adjacent tests is scope creep unless paid for).
@@ -97,7 +91,7 @@ Store the evidence pack alongside the report — auditors and retest teams need 
    - **Open** — fix didn't take.
 4. Issue a short retest report — usually 2–5 pages.
 
-## SLAs to Suggest
+### SLAs to Suggest
 
 Default starter SLAs (client can negotiate):
 
@@ -109,7 +103,7 @@ Default starter SLAs (client can negotiate):
 | Low | 30 days | 180 days |
 | Informational | — | next planning cycle |
 
-## Presentation / Readout
+### Presentation / Readout
 
 After delivery, run a 30–60 min walkthrough:
 - Slides 1–3: executive posture & top risks.
@@ -119,7 +113,7 @@ After delivery, run a 30–60 min walkthrough:
 
 Goals: shared understanding, clear ownership of each remediation, agreement on the retest window. Send the slides to attendees afterward — they'll be circulated up the chain.
 
-## Common Pitfalls
+### Common Pitfalls
 
 | Pitfall | Cost |
 |---------|------|
@@ -130,24 +124,18 @@ Goals: shared understanding, clear ownership of each remediation, agreement on t
 | Big screenshots, tiny font | Print versions illegible — use real text where you can |
 | No retest plan | Findings linger for years |
 
-## Tooling
+### Tooling
 
 | Tool | Use |
 |------|-----|
 | **SysReptor** | Open-source pentest reporting platform. |
 | **Dradis** | Findings DB + report generator. |
 | **PwnDoc** | Open-source pentest report tool. |
-| **Markdown + Pandoc** | DIY; what your `.rmd` files knit into. |
-| **R Markdown + LaTeX template** | High-quality PDF rendering for `.rmd` sources. |
+| **Markdown + Pandoc** | DIY; convert your `.md` notes into a polished PDF. |
+| **LaTeX template (Eisvogel etc.)** | High-quality PDF rendering for Markdown sources. |
 
-For an `.rmd` based workflow:
+For a Markdown-based workflow:
 
 ```bash
-Rscript -e "rmarkdown::render('report.rmd', output_format='pdf_document')"
+pandoc report.md -o report.pdf --template=eisvogel --toc
 ```
-
----
-
-## See Also
-- [Report Fundamentals](./01-report-fundamentals.rmd) — the structure these deliverables hang on.
-- [Engagement Types & Compliance](./02-engagement-types.rmd) — which framework the report maps to.

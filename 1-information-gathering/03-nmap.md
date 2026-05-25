@@ -1,25 +1,19 @@
----
-title: "Nmap"
-stage: "1 - Information Gathering"
-tags: [nmap, port-scan, nse, evasion]
----
-
-# Nmap
+## Nmap
 
 The first active step against almost every target. Goal: discover hosts, open ports, services, versions, and (where possible) preliminary CVEs via NSE.
 
 ---
 
-## Default Scans
+### Default Scans
 
 ```bash
-# Aggressive: full TCP, version + default scripts, OS guess
+## Aggressive: full TCP, version + default scripts, OS guess
 nmap -sV -sC -p- -A <ip>
 
-# Polite + skip host discovery
+## Polite + skip host discovery
 nmap -sV -sC -Pn <target_ip>
 
-# From a host list, write normal output
+## From a host list, write normal output
 nmap -sV -sC -iL hosts.txt -oN port_scan.txt
 ```
 
@@ -35,14 +29,14 @@ nmap -sV -sC -iL hosts.txt -oN port_scan.txt
 | `-O` | OS detection |
 | `-sU --top-ports 50` | Top 50 UDP services |
 
-## Subnet Sweep (Fast)
+### Subnet Sweep (Fast)
 
 ```bash
 fping -agq 10.211.11.0/24
-# -a alive, -g generate from netmask, -q quiet
+## -a alive, -g generate from netmask, -q quiet
 ```
 
-## Firewall / IDS Evasion
+### Firewall / IDS Evasion
 
 A port that returns *rejected* indicates a firewall is present; *blocked* (filtered) is also a strong signal.
 
@@ -52,17 +46,17 @@ nmap -sU <ip>                   # UDP scan
 nmap --disable-arp-ping <ip>    # skip ARP discovery
 ```
 
-## IPS Evasion
+### IPS Evasion
 
 ```bash
-# If your source IP gets blocked
+## If your source IP gets blocked
 nmap -D RND:5 <ip>              # 5 randomly generated decoy IPs
 
-# If a destination port keeps getting blocked
+## If a destination port keeps getting blocked
 nmap --source-port <port> <ip>  # spoof source port (e.g. 53)
 ```
 
-## NSE — Service-Specific Scripts
+### NSE — Service-Specific Scripts
 
 ```bash
 nmap -p3389 --script rdp-enum-encryption <ip>
@@ -86,16 +80,10 @@ NSE categories worth knowing:
 | `discovery` | Extra host / service discovery |
 | `intrusive` | May crash services / get noticed |
 
-## Output Formats
+### Output Formats
 
 ```bash
 nmap -sV -sC -oA scan <ip>      # -oA writes scan.nmap, scan.xml, scan.gnmap
 ```
 
 `scan.gnmap` is grep-friendly; XML pairs well with tooling like `nmap-converter` or autorecon.
-
----
-
-## See Also
-- [Service Enumeration](./04-service-enumeration.rmd) — for the per-port follow-up once Nmap finds something.
-- [Active Directory Enumeration](./06-active-directory-enumeration.rmd) — for AD-specific NSE / netexec workflows.

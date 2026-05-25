@@ -1,16 +1,10 @@
----
-title: "AD Protocols"
-stage: "5 - Lateral Movement"
-tags: [kerberos, ntlm, ldap, smb, dns]
----
-
-# AD Protocols
+## AD Protocols
 
 The wire-level pieces of Active Directory. Knowing the protocols lets you predict which attacks apply, which logs they leave, and where to coerce / relay.
 
 ---
 
-## Kerberos (88, 464)
+### Kerberos (88, 464)
 
 Token-based authentication. No password is sent after initial auth.
 
@@ -42,7 +36,7 @@ Common error → action:
 | `KDC_ERR_C_PRINCIPAL_UNKNOWN` | Bad username |
 | `KDC_ERR_S_PRINCIPAL_UNKNOWN` | Bad SPN target |
 
-## NTLM (no fixed port — over SMB 445, HTTP, MSSQL, etc.)
+### NTLM (no fixed port — over SMB 445, HTTP, MSSQL, etc.)
 
 Challenge/response — server sends a nonce, client encrypts with its NT hash, server validates.
 
@@ -53,21 +47,21 @@ Challenge/response — server sends a nonce, client encrypts with its NT hash, s
 | **NetNTLMv1** | Old captures | 5500 |
 | **NetNTLMv2** | Responder / wire capture | 5600 |
 
-Why it matters: NetNTLMv2 hashes are crackable; if you can coerce auth (file UNC, PrinterBug, PetitPotam) and the target doesn't enforce SMB signing, **you can relay** to LDAP, MSSQL, HTTP for instant access — see [AD Initial Access → NTLM Relay](../3-exploitation/05-ad-initial-access.rmd).
+Why it matters: NetNTLMv2 hashes are crackable; if you can coerce auth (file UNC, PrinterBug, PetitPotam) and the target doesn't enforce SMB signing, **you can relay** to LDAP, MSSQL, HTTP for instant access — see [AD Initial Access → NTLM Relay](../3-exploitation/05-ad-initial-access.md).
 
-## LDAP (389) / LDAPS (636)
+### LDAP (389) / LDAPS (636)
 
 Read/query AD objects. Foundation of every enumeration tool (BloodHound, netexec, PowerView, etc.).
 
 ```bash
-# Anonymous bind
+## Anonymous bind
 ldapsearch -x -H ldap://<dc> -s base
 
-# Authenticated search
+## Authenticated search
 ldapsearch -x -H ldap://<dc> -D 'CORP\jdoe' -w '<pass>' -b 'dc=corp,dc=local' \
     "(objectClass=user)"
 
-# Filter for specific attributes
+## Filter for specific attributes
 ldapsearch -x -H ldap://<dc> -D 'CORP\jdoe' -w '<pass>' -b 'dc=corp,dc=local' \
     "(objectClass=user)" sAMAccountName memberOf description
 ```
@@ -83,7 +77,7 @@ Useful LDAP filters:
 | `(servicePrincipalName=*)` | Accounts with SPNs (Kerberoast) |
 | `(adminCount=1)` | Members of protected groups |
 
-## SMB (445)
+### SMB (445)
 
 File-sharing protocol; also carries IPC$, SAMR, LSARPC, DRSUAPI (replication / DCSync), etc. — most of what `impacket-*` tools use.
 
@@ -105,7 +99,7 @@ nmap -p445 --script smb-protocols <ip>
 nmap -p445 --script smb-security-mode <ip>
 ```
 
-## DNS (53)
+### DNS (53)
 
 In AD, DNS is usually hosted on DCs. Members register their A records dynamically. Why it matters:
 
@@ -114,23 +108,23 @@ In AD, DNS is usually hosted on DCs. Members register their A records dynamicall
 - **DnsAdmins privesc**: load a malicious DLL into the DNS service — runs as SYSTEM.
 - **SigRed (CVE-2020-1350)**: pre-auth RCE on the DC's DNS service → Domain Admin.
 
-## Global Catalog (3268 / 3268S)
+### Global Catalog (3268 / 3268S)
 
 A subset of every object in every domain of the forest, accessible from any DC. Used for cross-domain lookups — and an excellent target for LDAP queries that need forest-wide visibility.
 
-## WinRM (5985 / 5986)
+### WinRM (5985 / 5986)
 
 HTTP-based remote PowerShell. Default port 5985 plaintext, 5986 TLS. `evil-winrm` is the standard tool. Auth options: cleartext password, NTLM (`-H <hash>`), Kerberos (`-r <REALM>` after `kinit`).
 
-## WMI (135 + dynamic high ports)
+### WMI (135 + dynamic high ports)
 
 Older RPC-based remote management. Used by `impacket-wmiexec`. Useful when WinRM is locked down.
 
-## MS-RPC over Named Pipes / TCP
+### MS-RPC over Named Pipes / TCP
 
 Backbone of much of AD. Tools like `rpcclient`, `impacket-*`, and `bloodhound-python` all run RPC calls; abused by SAMR brute, LSARPC enum, DRSUAPI (DCSync), Spoolsv (PrinterBug), EFSRPC (PetitPotam).
 
-## See Also
-- [Active Directory Enumeration](../1-information-gathering/06-active-directory-enumeration.rmd) — LDAP / netexec / kerbrute in practice.
-- [Kerberos Attacks](./03-kerberos-attacks.rmd) — ticket impersonation & forging.
-- [Credential Dumping](../4-post-exploitation/03-credential-dumping.rmd) — for the hashes that feed these protocols.
+### See Also
+- [Active Directory Enumeration](../1-information-gathering/06-active-directory-enumeration.md) — LDAP / netexec / kerbrute in practice.
+- [Kerberos Attacks](./03-kerberos-attacks.md) — ticket impersonation & forging.
+- [Credential Dumping](../4-post-exploitation/03-credential-dumping.md) — for the hashes that feed these protocols.

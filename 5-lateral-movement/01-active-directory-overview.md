@@ -1,16 +1,10 @@
----
-title: "Active Directory Overview"
-stage: "5 - Lateral Movement"
-tags: [active-directory, forest, domain, ou, trusts]
----
-
-# Active Directory Overview
+## Active Directory Overview
 
 A grounding section before the protocol- and attack-specific chapters. If the words *forest*, *domain*, *OU*, *trust*, *SID*, *RID* aren't muscle memory, this is the place to start.
 
 ---
 
-## Structure
+### Structure
 
 ```text
 Forest
@@ -34,7 +28,7 @@ Forest
 | **Object** | User, computer, group, GPO, etc. |
 | **Trust** | Relationship between domains/forests that lets users authenticate across them. |
 
-## Identifiers
+### Identifiers
 
 | Identifier | Format | Example |
 |------------|--------|---------|
@@ -44,7 +38,7 @@ Forest
 | **UPN** | `<user>@<domain>` | `jdoe@corp.local` |
 | **sAMAccountName** | Legacy NT-style login name | `CORP\jdoe` |
 
-## Well-Known RIDs Worth Remembering
+### Well-Known RIDs Worth Remembering
 
 | RID | Object |
 |-----|--------|
@@ -58,7 +52,7 @@ Forest
 | 519 | Enterprise Admins |
 | 525 | Protected Users (post 2012 R2) |
 
-## Default High-Value Groups
+### Default High-Value Groups
 
 | Group | Why it matters |
 |-------|----------------|
@@ -72,7 +66,7 @@ Forest
 | **Print Operators** | Driver install → SYSTEM (rare in modern envs). |
 | **Cert Publishers** | Manage AD CS — high-value as cert abuse grows (Certifried, ESC1-ESC8). |
 
-## Trusts
+### Trusts
 
 | Direction | Meaning |
 |-----------|---------|
@@ -82,7 +76,7 @@ Forest
 | **External** | Trust to a domain outside the forest (non-transitive by default). |
 | **Forest trust** | Between two entire forests. |
 
-## Access Control Building Blocks
+### Access Control Building Blocks
 
 | Construct | What it does |
 |-----------|--------------|
@@ -104,7 +98,7 @@ Useful ACE rights for attackers:
 
 BloodHound surfaces all of these as attack edges.
 
-## Group Policy (quick mental model)
+### Group Policy (quick mental model)
 
 GPOs are policies linked to **sites, domains, or OUs**. Order of application: Local → Site → Domain → OU. Inheritance can be blocked; enforcement overrides blocks.
 
@@ -113,7 +107,7 @@ Attacker uses for GPO:
 - Push a scheduled task / installed MSI to every machine.
 - Modify Group Policy Preferences (`Groups.xml` historically stored AES-encrypted passwords — known key → recoverable).
 
-## See Also
-- [Active Directory Enumeration](../1-information-gathering/06-active-directory-enumeration.rmd) — for mapping objects, ACLs, and trusts with BloodHound / netexec.
-- [AD Protocols](./02-ad-protocols.rmd) — the wire-level details (Kerberos, NTLM, LDAP).
-- [Kerberos Attacks](./03-kerberos-attacks.rmd) — for ticket-based lateral movement.
+### See Also
+- [Active Directory Enumeration](../1-information-gathering/06-active-directory-enumeration.md) — for mapping objects, ACLs, and trusts with BloodHound / netexec.
+- [AD Protocols](./02-ad-protocols.md) — the wire-level details (Kerberos, NTLM, LDAP).
+- [Kerberos Attacks](./03-kerberos-attacks.md) — for ticket-based lateral movement.

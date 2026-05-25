@@ -1,16 +1,10 @@
----
-title: "DNS Reconnaissance"
-stage: "1 - Information Gathering"
-tags: [dns, subdomain, zone-transfer, fierce, dig]
----
-
-# DNS Reconnaissance
+## DNS Reconnaissance
 
 DNS is one of the highest-signal recon sources you have: subdomains map directly to additional attack surface, and a misconfigured zone transfer can hand you the entire internal name space.
 
 ---
 
-## Tool Comparison
+### Tool Comparison
 
 | Tool | Strength | Typical use |
 |------|----------|-------------|
@@ -25,7 +19,7 @@ DNS is one of the highest-signal recon sources you have: subdomains map directly
 
 ---
 
-## dig Quick Reference
+### dig Quick Reference
 
 ```bash
 dig domain.com                          # default A lookup
@@ -44,7 +38,7 @@ dig +noall +answer domain.com           # answer section only
 dig any domain.com @<ns-server>         # everything
 ```
 
-## Zone Transfer (AXFR)
+### Zone Transfer (AXFR)
 
 If the server allows `allow-transfer`, you act as a secondary and pull the entire zone:
 
@@ -55,7 +49,7 @@ dig axfr internal.inlanefreight.htb @10.129.14.128   # may reveal internal IPs
 
 A successful AXFR is one of the best single moves you can make against a misconfigured DNS server.
 
-## DNS Server Config to Look For
+### DNS Server Config to Look For
 
 | File | What's interesting |
 |------|--------------------|
@@ -70,7 +64,7 @@ A successful AXFR is one of the best single moves you can make against a misconf
 | `allow-transfer` | Who can pull a zone — **the big one** |
 | `zone-statistics` | Stats collection |
 
-## dnsenum
+### dnsenum
 
 ```bash
 dnsenum --dnsserver 10.129.86.142 --enum -p 0 -s 0 \
@@ -79,14 +73,14 @@ dnsenum --dnsserver 10.129.86.142 --enum -p 0 -s 0 \
     inlanefreight.htb
 ```
 
-## Fierce
+### Fierce
 
 ```bash
 fierce --domain <domain>
 fierce --domain <domain> --subdomain-file <wordlist>
 ```
 
-## Subdomain Enumeration (mix and match)
+### Subdomain Enumeration (mix and match)
 
 ```bash
 subfinder -d <domain> -all
@@ -94,7 +88,7 @@ amass enum -d <domain>
 assetfinder --subs-only <domain>
 ```
 
-### Certificate Transparency via crt.sh
+#### Certificate Transparency via crt.sh
 
 Find subdomains issued an SSL cert (which catches many that brute-force misses):
 
@@ -114,27 +108,21 @@ done
 for ip in $(cat ip-addresses.txt); do shodan host "$ip"; done
 ```
 
-## vhost Fuzzing (find virtual hosts behind one IP)
+### vhost Fuzzing (find virtual hosts behind one IP)
 
 ```bash
 ffuf -u http://<ip> -H "Host: FUZZ.<domain>" \
      -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -ac
-# Then filter once you have a baseline:
+## Then filter once you have a baseline:
 ffuf -u http://<ip> -H "Host: FUZZ.<domain>" -w <wordlist> -fs 157 -ac -t 100
 ```
 
 Don't forget: **vhosts can have vhosts** — re-run the fuzz once you discover the new domain.
 
-## Always Add Hostnames to /etc/hosts
+### Always Add Hostnames to /etc/hosts
 
 HTB-style boxes and many real engagements use name-based virtual hosts. If you don't add the host, vhosts won't resolve:
 
 ```bash
 echo "10.129.93.57 app.inlanefreight.local" | sudo tee -a /etc/hosts
 ```
-
----
-
-## See Also
-- [Web Reconnaissance](./05-web-recon.rmd) — once you've got hostnames, fuzz them.
-- [OSINT](./01-osint.rmd) — passive sources that feed DNS recon.

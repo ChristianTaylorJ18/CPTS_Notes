@@ -1,10 +1,4 @@
----
-title: "Report Fundamentals"
-stage: "6 - Report Writing"
-tags: [report, executive-summary, methodology, findings, evidence]
----
-
-# Report Fundamentals
+## Report Fundamentals
 
 A penetration test report has **two distinct audiences** sharing one document:
 - **Executives** — care about business risk, budget impact, and what they should do next quarter. Read pages 1–3.
@@ -14,7 +8,7 @@ Write for both, but separate the language clearly.
 
 ---
 
-## Standard Report Structure
+### Standard Report Structure
 
 | # | Section | Audience | Length |
 |---|---------|----------|--------|
@@ -27,7 +21,7 @@ Write for both, but separate the language clearly.
 | 7 | **Remediation Roadmap** | Both | 1–2 pages |
 | 8 | **Appendices** | Engineers | As needed |
 
-## 1. Executive Summary
+### 1. Executive Summary
 
 What it should answer in three paragraphs:
 
@@ -41,7 +35,7 @@ Example posture statement:
 
 > *Inlanefreight's internal Active Directory environment exhibits a low overall security posture. We obtained Domain Administrator privileges within four hours of the engagement start using only network access and no prior credentials. The principal weaknesses are weak service account passwords, missing patch management on Domain Controllers, and lack of network segmentation between user and server VLANs.*
 
-## 2. Scope and Objectives
+### 2. Scope and Objectives
 
 - Targets (IP ranges, domains, applications).
 - Out-of-scope assets and times.
@@ -51,7 +45,7 @@ Example posture statement:
 
 A scope section should make it impossible to claim "you tested something we never authorized."
 
-## 3. Methodology
+### 3. Methodology
 
 Describe the process at the level of "we followed PTES" or "we worked through the seven stages: recon, enum, vuln assessment, exploitation, post-ex, lateral, reporting." Reference standards:
 
@@ -61,7 +55,7 @@ Describe the process at the level of "we followed PTES" or "we worked through th
 - **NIST SP 800-115** — Technical Guide to Information Security Testing.
 - **MITRE ATT&CK** — useful as a tagging vocabulary for techniques used.
 
-## 4. Findings Summary Table
+### 4. Findings Summary Table
 
 ```text
 | Finding ID | Title                                  | Severity | CVSS  | Status |
@@ -73,10 +67,10 @@ Describe the process at the level of "we followed PTES" or "we worked through th
 | ...        |                                        |          |       |        |
 ```
 
-## 5. Detailed Findings (the template every finding follows)
+### 5. Detailed Findings (the template every finding follows)
 
 ```text
-### F-001 — Domain Admin via Kerberoasting
+#### F-001 — Domain Admin via Kerberoasting
 
 **Severity:** Critical (CVSS 9.8)
 **Affected:** corp.inlanefreight.com → svc-sql (Domain Admin)
@@ -125,7 +119,7 @@ Domain compromise — full read/write to every system, all credentials.
 - Microsoft KB article URL
 ```
 
-## 6. Attack Path Narrative
+### 6. Attack Path Narrative
 
 A prose walkthrough of how the engagement actually unfolded, in order. This is the section non-technical readers tend to remember — it's also where you show the *chain* (low-impact bugs combined into critical compromise).
 
@@ -133,7 +127,7 @@ Example opening:
 
 > *Starting from a single user credential discovered via a successful password spray (Welcome2026! → `jdoe@corp.local`), we performed AD enumeration with BloodHound and identified `svc-sql` as Kerberoastable. The service account's password (`Inlane2024!`) cracked in seconds, granting Domain Admin via group membership in `IT-DBAs`. From there we dumped NTDS.dit and demonstrated read access to all sensitive shares.*
 
-## 7. Remediation Roadmap
+### 7. Remediation Roadmap
 
 Group fixes by:
 - **Immediate** (≤ 7 days) — issues being actively exploitable / critical.
@@ -142,14 +136,14 @@ Group fixes by:
 
 Pair each item with the finding(s) it closes.
 
-## 8. Appendices
+### 8. Appendices
 
 - Tools used (with versions).
 - IP/subnet inventory tested.
 - Full vulnerability scanner output (often a separate file).
 - Glossary for non-technical readers.
 
-## Writing Hygiene
+### Writing Hygiene
 
 - **Use the active voice** — *"We obtained DA"*, not *"DA was obtained"*.
 - **Number everything** — every finding ID, every screenshot ("Figure 3.2 — Cracked hash for svc-sql").
@@ -157,12 +151,6 @@ Pair each item with the finding(s) it closes.
 - **Redact before screenshots** — real passwords, real SIDs of the customer's domain.
 - **Date stamps** — UTC in artifacts so timelines line up across writers.
 
-## Style: Don't Be Punitive
+### Style: Don't Be Punitive
 
 Write to help, not to dunk. *"The team has historically had limited tooling for service-account rotation, leading to long-lived passwords"* lands better than *"Service-account passwords are negligently old."* The technical content is the same; the relationship matters.
-
----
-
-## See Also
-- [Engagement Types & Compliance](./02-engagement-types.rmd) — picking the right framework reference.
-- [Deliverables and Remediation](./03-deliverables-remediation.rmd) — scoring and retest workflow.

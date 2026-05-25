@@ -1,16 +1,10 @@
----
-title: "Engagement Types & Compliance"
-stage: "6 - Report Writing"
-tags: [pentest, red-team, bug-bounty, audit, pci, hipaa, fisma, iso27001]
----
-
-# Engagement Types & Compliance
+## Engagement Types & Compliance
 
 The same technical work can be wrapped in very different engagement shapes. The shape determines who reads the report, how much detection-and-response gets tested, and which compliance language goes in the cover letter.
 
 ---
 
-## Engagement Types
+### Engagement Types
 
 | Type | Description | Goal |
 |------|-------------|------|
@@ -21,7 +15,7 @@ The same technical work can be wrapped in very different engagement shapes. The 
 | **Security Audit** | Compliance-driven, often mandated by a government / regulator. | Prove conformance to a standard. |
 | **Purple Team** | Pentesters + defenders working together in real time. | Tune detections directly off real attacks. |
 
-### Black / Grey / White Box
+#### Black / Grey / White Box
 
 | Box | What the tester knows |
 |-----|----------------------|
@@ -29,7 +23,7 @@ The same technical work can be wrapped in very different engagement shapes. The 
 | **Grey box** | Some — a user account, partial network diagram. Simulates an insider or compromised contractor. |
 | **White box** | Everything — source code, architecture docs, admin creds. Maximizes finding density per hour. |
 
-## Pentest vs. Red Team — Where the Lines Are
+### Pentest vs. Red Team — Where the Lines Are
 
 | Dimension | Pentest | Red Team |
 |-----------|---------|----------|
@@ -40,7 +34,7 @@ The same technical work can be wrapped in very different engagement shapes. The 
 | Tooling | Standard pentest stack | Custom C2, evasion, social engineering |
 | Report focus | Findings + remediation | Attack narrative + detection gaps |
 
-## Compliance Frameworks
+### Compliance Frameworks
 
 | Framework | Sector | Headline requirements relevant to a pentester |
 |-----------|--------|------------------------------------------------|
@@ -52,7 +46,7 @@ The same technical work can be wrapped in very different engagement shapes. The 
 | **NIST SP 800-115** | Reference, not regulation | Technical Guide to Information Security Testing — every framework above references it. |
 | **CMMC** | U.S. DoD supply chain | Maturity levels; Level 3+ requires red-team-style assessment. |
 
-### What the auditor wants in the report
+#### What the auditor wants in the report
 
 - A statement of scope mapped to the framework's control IDs.
 - Methodology aligned to NIST SP 800-115 / PTES / OSSTMM.
@@ -60,7 +54,7 @@ The same technical work can be wrapped in very different engagement shapes. The 
 - A retest after remediation, with a signed statement.
 - The tester's certifications (where they matter — OSCP, OSCE, CRTO, GIAC family).
 
-## Authorization — The Single Most Important Document
+### Authorization — The Single Most Important Document
 
 Before any active testing starts, you need:
 - A **Rules of Engagement (RoE)** document signed by an executive with authority over the assets.
@@ -71,12 +65,6 @@ Before any active testing starts, you need:
 
 Without signed authorization, **everything you do is illegal** under CFAA / equivalents. Save the RoE PDF to the engagement folder before launching `nmap`.
 
-## When You Find Something Out-of-Scope
+### When You Find Something Out-of-Scope
 
 Stop. Notify the client. Document the discovery (where, when, how) but do not exploit. Out-of-scope discoveries often signal scope was undersized — a good opportunity to expand the engagement.
-
----
-
-## See Also
-- [Report Fundamentals](./01-report-fundamentals.rmd) — how this all becomes a deliverable.
-- [Vulnerability Assessment](../2-pre-exploitation/01-vulnerability-assessment.rmd) — the conceptual cousin.

