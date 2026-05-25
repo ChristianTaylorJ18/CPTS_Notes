@@ -1,7 +1,5 @@
 # CPTS Notes
 
-A clean, sectioned reference for the **HTB Certified Penetration Testing Specialist (CPTS)** path, distilled from course material (CIS4201) and lab notes.
-
 Each stage folder holds a set of `.md` files covering one focused topic; sections are ordered to mirror an engagement from the first packet to the final report.
 
 ---
