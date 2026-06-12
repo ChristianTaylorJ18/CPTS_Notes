@@ -84,8 +84,18 @@ fierce --domain <domain> --subdomain-file <wordlist>
 
 ```bash
 subfinder -d <domain> -all
+./subfinder -d inlanefreight.com -v
 amass enum -d <domain>
 assetfinder --subs-only <domain>
+```
+
+#### Subbrute (DNS brute force with custom resolvers)
+
+```bash
+git clone https://github.com/TheRook/subbrute.git
+cd subbrute
+echo "<dns_server_ip>" > ./resolvers.txt
+./subbrute.py <domain_name> -s ./names.txt -r ./resolvers.txt
 ```
 
 #### Certificate Transparency via crt.sh

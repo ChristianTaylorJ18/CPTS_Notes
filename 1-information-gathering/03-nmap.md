@@ -17,6 +17,8 @@ nmap -sV -sC -Pn <target_ip>
 nmap -sV -sC -iL hosts.txt -oN port_scan.txt
 ```
 
+> Always use `-p-` for a real engagement (and the CPTS exam) — the default top-1000 misses high-port services that are common on internal networks.
+
 | Flag | Meaning |
 |------|---------|
 | `-sV` | Version detection on open ports |
