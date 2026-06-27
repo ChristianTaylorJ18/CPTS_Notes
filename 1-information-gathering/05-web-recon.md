@@ -43,10 +43,38 @@ gobuster dir -u https://<target> -w /usr/share/wordlists/common.txt -x php,html,
 
 #### ffuf
 
+> Errors mean you typed it in wrong — `ffuf` is unforgiving about the position of `FUZZ` and the placement of `:FUZZ` keyword markers.
+
+Directory fuzz:
+
 ```bash
-ffuf -w /usr/share/wordlists/dirb/common.txt -u http://<target>/FUZZ -ac
-## -ac auto-calibrates to filter out wildcard responses
+ffuf -w /opt/useful/seclists/Discovery/Web-Content/directory-list-2.3-small.txt \
+     -u http://SERVER_IP:PORT/FUZZ -ac
 ```
+
+Fuzz file extensions onto a known filename:
+
+```bash
+ffuf -w /opt/useful/seclists/Discovery/Web-Content/web-extensions.txt:FUZZ \
+     -u http://SERVER_IP:PORT/blog/indexFUZZ
+```
+
+Fuzz filenames under a known extension:
+
+```bash
+ffuf -w /opt/useful/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ \
+     -u http://SERVER_IP:PORT/blog/FUZZ.php
+```
+
+Recursive fuzzing (descend into discovered directories):
+
+```bash
+ffuf -w /opt/useful/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ \
+     -u http://SERVER_IP:PORT/FUZZ \
+     -recursion -recursion-depth 1 -e .php -v -ic
+```
+
+> Every new domain or subdomain you find — add it to `/etc/hosts` before fuzzing it. Wildcard DNS will silently break results otherwise.
 
 #### Wordlists to know
 
@@ -63,19 +91,56 @@ Default-creds wordlist (useful early on):
 ### vhost / Subdomain Fuzzing
 
 ```bash
-## vhost via Host header
-ffuf -u http://<ip> -H "Host: FUZZ.<domain>" \
-     -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -ac
+## Subdomain — public DNS-style
+ffuf -w /opt/useful/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ \
+     -u https://FUZZ.inlanefreight.com/
 
-## Subdomains (DNS-style)
-ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt \
-     -u http://<domain>/FUZZ
+## vhost — internal hosts that share an IP, switched on Host header
+ffuf -w /opt/useful/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ \
+     -u http://academy.htb:PORT/ -H 'Host: FUZZ.academy.htb'
 
 ## Filter once you know the wildcard size
 ffuf -u http://<ip> -H "Host: FUZZ.<domain>" -w <wordlist> -fs 157 -ac -t 100
 ```
 
-> Reminder: **vhosts can have vhosts**. Re-fuzz any new domain you discover.
+> Reminder: **vhosts can have vhosts**. Re-fuzz any new domain you discover. And don't forget to add discovered vhosts to `/etc/hosts` with the IP of the main website.
+
+### Parameter Fuzzing
+
+Useful when an endpoint takes hidden GET/POST parameters you have to guess.
+
+#### GET parameters
+
+```bash
+ffuf -w /opt/useful/seclists/Discovery/Web-Content/burp-parameter-names.txt:FUZZ \
+     -u http://admin.academy.htb:PORT/admin/admin.php?FUZZ=key -ac
+```
+
+#### POST parameters
+
+```bash
+ffuf -w /opt/useful/seclists/Discovery/Web-Content/burp-parameter-names.txt:FUZZ \
+     -u http://admin.academy.htb:PORT/admin/admin.php \
+     -X POST -d 'FUZZ=key' \
+     -H 'Content-Type: application/x-www-form-urlencoded' -ac
+```
+
+#### Brute-force values for a discovered parameter (e.g. numeric `id`)
+
+```bash
+## Build the ID list
+for i in $(seq 1 1000); do echo $i >> ids.txt; done
+
+## PHP requires the form content-type
+ffuf -w ids.txt:FUZZ \
+     -u http://admin.academy.htb:PORT/admin/admin.php \
+     -X POST -d 'id=FUZZ' \
+     -H 'Content-Type: application/x-www-form-urlencoded' -ac
+
+## Confirm a hit with curl
+curl -X POST http://admin.academy.htb:32543/admin/admin.php \
+     -d 'id=73' -H 'Content-Type: application/x-www-form-urlencoded'
+```
 
 ### FinalRecon (one-shot)
 

