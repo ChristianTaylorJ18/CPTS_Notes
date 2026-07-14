@@ -4,9 +4,8 @@ Practical "when I'm stuck, run this" playbook for the CPTS exam. Each file is a 
 
 The main notes (`1-` through `6-`) explain *how* each technique works. **This section is the reflex layer** — read a checklist file, work top-to-bottom, tick items as you go.
 
-## Rules of the game
+## General Reminders
 
-- **35 hours of exam time; 12 machines; 84% passing threshold.** Time-box aggressively.
 - **Screenshot everything as you find it** — you cannot re-collect evidence at report time.
 - **`nxc` for Windows, `medusa` for everything else.** [Password Attacks](../2-pre-exploitation/03-password-attacks.md).
 - **Never rabbit-hole.** If a technique isn't working after 45 minutes, tick it off and move to the next item.
