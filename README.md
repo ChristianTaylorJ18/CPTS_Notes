@@ -16,6 +16,7 @@ Each stage folder holds a set of `.md` files covering one focused topic; section
 | 4 | [Post-Exploitation](./4-post-exploitation/) | Linux & Windows privesc, credential dumping, persistence, shell upgrades |
 | 5 | [Lateral Movement](./5-lateral-movement/) | AD overview, Kerberos attacks, ACL abuse, Windows pivoting |
 | 6 | [Report Writing](./6-report-writing/) | Report structure, engagement types, deliverables & remediation |
+| 7 | [Exam Checklist](./7-exam-checklist/) | Actionable "when I'm stuck, run this" playbook for exam day |
 
 ---
 
@@ -62,6 +63,17 @@ Each stage folder holds a set of `.md` files covering one focused topic; section
 - [02 - Engagement Types & Compliance](./6-report-writing/02-engagement-types.md)
 - [03 - Deliverables and Remediation](./6-report-writing/03-deliverables-remediation.md)
 
+### 7. Exam Checklist
+- [00 - Methodology & Setup](./7-exam-checklist/00-methodology.md)
+- [01 - Recon](./7-exam-checklist/01-recon.md)
+- [02 - Web](./7-exam-checklist/02-web.md)
+- [03 - Active Directory](./7-exam-checklist/03-active-directory.md)
+- [04 - Linux Privesc](./7-exam-checklist/04-linux-privesc.md)
+- [05 - Windows Privesc](./7-exam-checklist/05-windows-privesc.md)
+- [06 - Password Attacks](./7-exam-checklist/06-password-attacks.md)
+- [07 - Pivoting](./7-exam-checklist/07-pivoting.md)
+- [08 - Report](./7-exam-checklist/08-report.md)
+
 ---
 
 ## Conventions
@@ -86,6 +98,7 @@ notes_refurb/
 ├── 4-post-exploitation/
 ├── 5-lateral-movement/
 ├── 6-report-writing/
+├── 7-exam-checklist/               ← actionable exam-day playbooks
 └── _archive/                       ← original PDF sources
 ```
 

