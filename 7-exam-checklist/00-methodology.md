@@ -16,7 +16,7 @@ touch hosts.txt subdomains.txt urls.txt creds.txt users.txt passwords.txt
 
 - [ ] Report template opened in a second monitor. See [Report Writing](../6-report-writing/).
 - [ ] VPN pack downloaded, tested with `ping <gateway>`.
-- [ ] Coffee / water / snacks within arm's reach — 35 hours is long.
+- [ ] Coffee / water / snacks within arm's reach — 10 days is a marathon, not a sprint.
 
 ## First 30 minutes of the exam
 
@@ -67,7 +67,10 @@ nxc ssh hosts.txt -u users.txt -p passwords.txt --continue-on-success
   | 10.10.10.5     | HTB{redacted}                             | 09:14 |
   ```
 
-## Sleep
+## Sleep & pacing (10 days is long — treat it like one)
 
-- [ ] Non-negotiable — sleep at least 6 hours in the middle. You will make critical errors after hour 20.
-- [ ] Set an alarm for 30 minutes before the exam ends to guarantee time to submit final flags and start the report.
+- [ ] Sleep a full night every night. You will make critical errors on 4 hours of sleep and lose more time debugging bad decisions than you saved by staying up.
+- [ ] Pick working hours and stick to them — the exam is a marathon, not a sprint. Burning out on day 3 leaves 7 days of degraded work ahead.
+- [ ] Log off cleanly at end of day: commit notes, screenshots filed, `creds.txt` up to date. Coming back cold to messy state kills momentum.
+- [ ] Take at least one full rest day if the schedule allows — a fresh look on day 6 catches things day-3 you missed.
+- [ ] Reserve **at least the final 24 hours** for the report. Set a hard-stop alarm 30 minutes before the exam ends to submit final flags and lock the report.

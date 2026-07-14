@@ -5,7 +5,7 @@ Reference: [Report Fundamentals](../6-report-writing/01-report-fundamentals.md) 
 
 ## Timing rule
 
-- [ ] Reserve the **final 4 hours** of the exam for the report, even if you're mid-attack.
+- [ ] Reserve **at least the final 24 hours** of the 10-day exam for the report, even if you're mid-attack. Assemble as you go — don't leave it all to the end.
 - [ ] The exam is passed on the *report*, not on shell count. Bad screenshots → failed pass.
 
 ## Structure your report will need
