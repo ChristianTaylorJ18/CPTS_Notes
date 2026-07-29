@@ -4,6 +4,106 @@ A report isn't finished when the PDF is signed. The full deliverable set drives 
 
 ---
 
+### Engagement Folder Structure
+
+Set this up on day 0 alongside your [notetaking scaffold](./01-report-fundamentals.md#notetaking-strategy-start-before-you-fire-the-first-packet). Same folder every time — muscle memory saves hours.
+
+```
+engagement/
+├── admin/                    Scope of Work, kickoff notes, status reports, vuln notifications
+├── deliverables/             Report + supplementary sheets, slide decks
+├── evidence/
+│   ├── findings/             One subfolder per finding — evidence lives with the narrative
+│   └── scans/
+│       ├── vuln/             Nessus / OpenVAS exports (native format)
+│       ├── service_enum/     Nmap / Masscan / Rumble output
+│       ├── web/              Burp / ZAP state files, EyeWitness / Aquatone screenshots
+│       └── ad/               BloodHound JSON, PowerView / ADRecon CSV, Ping Castle, Snaffler,
+│                              nxc logs, impacket output
+├── notes/                    Your working notes (OneNote / Obsidian export goes here)
+├── osint/                    Intelx, Maltego, DeHashed pulls that don't fit inline
+├── wireless/                 Optional — kismet / airodump captures if wireless is in scope
+├── logging/                  Tmux logs, msfconsole spool files
+└── misc/                     Web shells, payloads, custom scripts touched during the engagement
+```
+
+The **findings subfolder per finding** is the pattern that pays off most — when you write the report, you're just assembling narrative + evidence from a folder rather than hunting through a monolithic dump.
+
+---
+
+### Formatting & Redaction — Screenshots
+
+The screenshot rules that separate a signed-off report from a "please revise" reply:
+
+- **Redact credentials + PII in screenshots.** Solid black boxes over the sensitive region — never blur (deblurring tools are trivially good). For terminal output, use black bars printed *in the terminal* or edit the log before capture. First 4 chars of a hash is fine to show it *is* a hash.
+- **Annotate on the image** (arrows, red boxes) — draw the reader's eye. Do this in Greenshot / Flameshot, not in MS Word.
+- **Add a minimal border** so the image stands out against the page.
+- **Crop to just the relevant region.** No full-screen captures — a login form is a login form, not a login form plus your taskbar and open Discord.
+- **Show a URL bar or hostname context** so the reader knows *what* they're looking at without hunting.
+- **Terminal aesthetics:** solid black background, white or green text — no transparent shells, no rainbow themes. Clients sometimes print reports; dark-on-light saves toner and is more legible on paper.
+- **Keep your prompt professional.** Nothing screenshotted with `azzkicker@clientsmasher$ ` will survive QA.
+
+#### What NOT to include in the archive
+
+- Unredacted PII
+- Anything potentially criminal
+- Anything considered legally discoverable that isn't strictly necessary to prove the finding
+- Individual sensitive files as screenshots — instead, screenshot the *directory listing showing you had read permission*. Same evidentiary weight, no data leakage.
+
+#### Redacting tool output
+
+- Replace `(Pwn3d!)`-style tags in CrackMapExec / nxc output — configurable in the tool's config file so you don't hand-edit every screenshot.
+- Sanity-check `hashcat --show` output for anything crude in the cracked candidates. Rockyou is full of it — swap any offensive password for something innocuous. Yes, this counts as altering command output, but preserving the *finding* (weak password) while removing an unprofessional artifact is fine.
+- Spell out acronyms on first use. `IPv4`, `VPN` — safe. `SNMP`, `MitM`, `LDAP` — expand on first mention.
+
+---
+
+### Word (or LibreOffice) — Author Efficiency
+
+The reporting tool matters less than these habits — the goal is zero "direct formatting" in the document:
+
+| Habit | Payoff |
+|---|---|
+| **Font styles for every text element.** Never highlight-then-bold; apply a style. | Update the style once, every instance updates. Fixing a heading in 45 places at report-review time is soul-crushing. |
+| **Table styles** — same principle for tables. | Global consistency, fewer QA nits. |
+| **Built-in captions** (right-click image → Insert Caption). | Captions renumber automatically when you add/remove figures. Otherwise every insertion is manual carnage. |
+| **Page numbers.** | Referring to "second paragraph on page 12" during client Q&A is dramatically easier than "in the section about, uh, the Kerberos thing." |
+| **Table of Contents + List of Figures/Tables** — generated from styles + captions. | One-click refresh (`Ctrl-A` then `F9` in Word). |
+| **Bookmarks** — anchor targets for internal hyperlinks. | Lets appendix cross-references survive section reordering. Also useful with macros to strip sections. |
+| **Custom dictionary / AutoCorrect entries** for words you always misspell (e.g., writing "pubic" instead of "public"). | Prevents career-defining typos. Doesn't travel with the template — configure per person. |
+| **Language settings — mark code / terminal style as "do not spell-check."** | Spellcheck stops nagging you 400 times about `impacket-secretsdump` and `NetNTLMv2`. |
+| **Custom numbering** for findings, appendices, etc. | Renumbering after insertion is automatic. |
+
+#### Quick Access Toolbar additions
+
+`File → Options → Quick Access Toolbar` — worth adding:
+
+- **Back** — after clicking a hyperlink you inserted, jumps you back to where you were.
+- **Undo / Redo** — if you don't reflex-hit `Ctrl-Z`.
+- **Save** — same, for `Ctrl-S`.
+- Then set "Choose commands from" → "Commands Not in the Ribbon" to browse the deeply-buried tools worth surfacing.
+
+#### Word hotkeys worth muscle-memorizing
+
+| Shortcut | What |
+|---|---|
+| `F4` | Repeats the last action. Highlight text → apply style → then highlight next region → `F4`. |
+| `Ctrl-A` then `F9` | Update every field in the document — ToC, list of figures, cross-references. Occasionally misbehaves, so save first. |
+| `Ctrl-S` | Save. Do it constantly — Word crashes. |
+| `Ctrl-Alt-S` | Split the window into two panes for referencing distant sections without scrolling back and forth. |
+| `Shift-F5` | Move cursor to the last edit position — useful when you tab away and lose your place, or accidentally type into Discord. |
+
+---
+
+### QA Process
+
+- **Two reviewers besides yourself** — you should never review your own writing. If you're solo, at minimum sleep on it one night and re-read fresh; walking away and coming back catches things staring won't.
+- **Style guide** — everyone on the team writes to the same rules (voice, capitalization, finding-title format). Consistency reads as competence.
+- **Grammar/spelling tools** — Grammarly or LanguageTool are meaningfully better than Word's built-in checker. Be aware some tools ship text to the cloud for "learning" — check the ToS against your client's data-handling agreement.
+- **Whitehat** — a platform worth learning post-CPTS; it stores findings so you don't retype the same three sentences for every "weak password" finding across engagements.
+
+---
+
 ### Standard Deliverables
 
 | Artifact | Purpose | Audience |

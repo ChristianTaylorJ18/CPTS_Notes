@@ -8,6 +8,80 @@ Write for both, but separate the language clearly.
 
 ---
 
+### Notetaking Strategy (start before you fire the first packet)
+
+The report is assembled from notes taken during testing — never the other way around. Set up a note structure on day 0, keep it disciplined, and the report writes itself.
+
+Recommended notebook layout:
+
+| Section | Contents |
+|---|---|
+| **Attack Path** | Full narrative of every foothold and pivot, with commands and screenshots pasted in chronological order — this becomes the report's attack-chain section verbatim. |
+| **Credentials** | Central store for every cred discovered — `user:pass`, hash type, source host, whether cracked. Also collects `.kdbx`, keys, tokens. |
+| **Findings** | Subfolder per finding — narrative + evidence + reference material. |
+| **Vulnerability Scan Research** | What you scanned, what came back, what you followed up on — prevents re-running the same triage twice. |
+| **Service Enumeration Research** | Per-service investigation notes: what you found, what you tried, why it didn't work. |
+| **Web Application Research** | Per-site notes: subdomain enum output, default cred pairs tried, interesting endpoints. Aquatone / EyeWitness screenshots go here. |
+| **AD Enumeration Research** | Step-by-step of every enum tool run against the domain — BloodHound queries, PowerView pulls, Snaffler output. |
+| **OSINT** | Anything you dug up externally that isn't already in another note. |
+| **Administrative Info** | Client POC contacts, PMs, unique objectives from the RoE, running to-do list of "try this later" ideas. |
+| **Scoping Info** | IPs / CIDRs / URLs / provided credentials in scope. Referred to constantly — don't hide it in an email. |
+| **Activity Log** | High-level chronology of everything you did — supports blue-team event correlation if they ask. |
+| **Payload Log** | Every payload used, target, timestamp, and file hash for anything dropped on disk. Critical for cleanup and IR support. |
+| **Artifact Log** | Every account created, config changed, or file left behind. Include: host IP/name, timestamp, description, location on disk, service touched, account name + password if you had to leave one. |
+
+Recommended tools:
+
+- **Cloud**: OneNote (sync, tables, drag-drop screenshots, revision history).
+- **Local**: Obsidian (markdown, no vendor lock-in, plays nicely with git).
+
+---
+
+### Automatic Terminal Logging (tmux + tmux-logging)
+
+Every command you run should be captured to disk without you thinking about it. `tmux-logging` handles this transparently:
+
+```bash
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+touch ~/.tmux.conf
+```
+
+`~/.tmux.conf`:
+
+```
+set -g @plugin 'tmux-plugins/tpm'
+set -g @plugin 'tmux-plugins/tmux-sensible'
+set -g @plugin 'tmux-plugins/tmux-logging'
+
+set -g history-limit 50000
+
+# Initialize TMUX plugin manager (keep at bottom)
+run '~/.tmux/plugins/tpm/tpm'
+```
+
+Load it once:
+
+```bash
+tmux source ~/.tmux.conf
+tmux new -s setup
+```
+
+Then in the session: **`Ctrl-B → Shift-I`** installs the plugin.
+
+Usage:
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl-B → Shift-P` | Start logging this pane to a file |
+| `exit` | Stop logging |
+| `Ctrl-B → Shift-%` | Split pane vertically |
+| `Ctrl-B → "` | Split pane horizontally |
+| `Ctrl-B → O` | Cycle between panes |
+
+Log files land in your home dir named `tmux-<session>-<pane>-YYYYMMDD-HHMMSS.log` — copy them into your evidence folder at end of day.
+
+---
+
 ### Standard Report Structure
 
 | # | Section | Audience | Length |
@@ -34,6 +108,31 @@ Avoid jargon. The CFO should understand the page.
 Example posture statement:
 
 > *Inlanefreight's internal Active Directory environment exhibits a low overall security posture. We obtained Domain Administrator privileges within four hours of the engagement start using only network access and no prior credentials. The principal weaknesses are weak service account passwords, missing patch management on Domain Controllers, and lack of network segmentation between user and server VLANs.*
+
+The audience test: write it as if you're explaining it to your parents while staying professional and concise. If your parents can't understand the point, try again (assuming your parents aren't CISOs). The reader:
+
+- Does not do this every day. They don't know what Rubeus does, what password spraying means, or that a Kerberos ticket can grant other tickets.
+- May be reading their first-ever penetration test report.
+- Has a short attention span. Once you lose it, you don't get it back.
+- Doesn't want to Google what terms mean — that's a distraction.
+
+#### Do
+
+| Rule | Why |
+|---|---|
+| **Be specific with metrics.** "Several" and "multiple" could mean 6 or 500. Use "25 occurrences" or "while there may be additional instances, we observed 25 in the time allotted." | Vagueness reads as hedging — execs stop reading. |
+| **Keep it to 1.5–2 pages max.** If longer, collapse categories into higher-level themes tied to policies/procedures. | It's a *summary*. Detail lives in the findings. |
+| **Describe the things you accessed in business terms.** "An account that let us access HR documents, banking systems, and customer records" beats "Domain Admin." | The audience knows what HR documents are; they don't know what DA is. |
+| **Prescribe process fixes, not patch lists.** Instead of "install 3 patches," ask "what process broke down that let a 5-year-old CVE go unpatched in a quarter of the estate?" | Patches are today's symptom; process is tomorrow's root cause. |
+| **Set effort expectations** if you have the sysadmin background to judge them. Low / moderate / significant. | Prevents an overzealous CEO from telling the server team to apply CIS hardening over the weekend without testing. |
+
+#### Don't
+
+| Anti-pattern | Why to avoid |
+|---|---|
+| **Naming specific vendors.** OK to say "EDR" or "log aggregation"; not OK to say "CrowdStrike" or "Splunk." Vendor recommendations belong in an out-of-band conversation. | The deliverable is a technical document, not a sales pitch. |
+| **Acronyms.** IP and VPN are fine; SNMP, MitM, XSS, LDAP are not — the exec-summary audience does not speak in acronyms. | Every unexplained acronym is a distraction. |
+| **Spending more space on trivia than on serious findings.** | You control what the reader remembers. Don't dilute the critical stuff. |
 
 ### 2. Scope and Objectives
 
@@ -138,10 +237,25 @@ Pair each item with the finding(s) it closes.
 
 ### 8. Appendices
 
-- Tools used (with versions).
-- IP/subnet inventory tested.
-- Full vulnerability scanner output (often a separate file).
-- Glossary for non-technical readers.
+Appendices split into two kinds — **static** (same skeleton across engagements) and **dynamic** (populated from what you actually did on this one).
+
+**Static appendices** — reused with minimal edits per report:
+
+- **Scope** — URLs, network ranges, facilities, dates. Compliance auditors need to see this.
+- **Methodology** — the repeatable process you follow (recon → enum → vuln assessment → exploitation → post-ex → lateral → reporting), so a reader can judge whether the assessment was thorough.
+- **Severity ratings** — if your severity bands don't directly map to CVSS, define the criteria explicitly. You'll need to defend these on QA and client calls.
+- **Consultant biographies** — required for PCI reports (proves consultant qualifications); nice-to-have for others, gives the client confidence.
+- **Tools used** (with versions).
+- **Glossary** for non-technical readers.
+
+**Dynamic appendices** — populated per engagement:
+
+- **Exploitation attempts & payloads** — everything you fired, including custom payloads dropped on disk, their SHA256 hashes, and their locations. If the blue team investigates a real incident later, they need to differentiate you from a real attacker. Especially critical for payloads you couldn't clean up.
+- **Compromised credentials** — every account you broke into. For full-domain compromise, "all domain accounts" is enough — don't list every user; that's noise.
+- **Configuration changes** — anything you modified in the environment (hopefully with permission first). List so the client can revert cleanly. Ideal: put it back yourself and get written approval for anything that stays changed.
+- **Additional affected scope** — for findings with lots of affected hosts, tabulate them here rather than in the finding body. Multi-column tables keep it clean.
+- **Information Gathering** (external pentests) — whois, subdomains, discovered emails, breach-data hits, SSL/TLS analysis, externally-accessible port inventory (big scopes → supplementary spreadsheet). Great for low-finding reports where you still want to convey value.
+- **Domain Password Analysis** — after DA, dump NTDS, hashcat with multiple wordlists + rules, brute-force NTLM up to 8 chars if your rig is up to it. Run [DPAT](https://github.com/clr2of8/DPAT) on the results for a statistics report. Include: total hashes obtained, cracked count + %, cracked privileged accounts (DA / EA), top-N passwords, cracked count per character length. Reinforces "weak password" themes throughout the report. Optionally include the full DPAT report as supplementary data.
 
 ### Writing Hygiene
 
@@ -154,3 +268,60 @@ Pair each item with the finding(s) it closes.
 ### Style: Don't Be Punitive
 
 Write to help, not to dunk. *"The team has historically had limited tooling for service-account rotation, leading to long-lived passwords"* lands better than *"Service-account passwords are negligently old."* The technical content is the same; the relationship matters.
+
+---
+
+### Client Communication (bookend every day)
+
+Send a **start notification** at the beginning of the engagement:
+
+- Tester name
+- Description of the type / scope of the engagement
+- Source IP address for testing — public IP for external attacks, internal IP if you're on their network
+- Anticipated testing dates
+- Primary and secondary contact info (email + phone) for both sides
+
+Send a **stop notification** at the end of each testing day:
+
+- One-line summary that testing has stopped for the day
+- If you found anything critical, a high-level heads-up so the report doesn't blindside them 3 weeks later ("we ended today with Domain Admin — details in the final report")
+- Reiterate expected delivery date for the report
+
+Both emails go to the primary POC + a backup, cc'd to your own PM.
+
+---
+
+### Working Habits That Compound
+
+Small habits that separate consistent reports from panicked all-nighters:
+
+- **Write as you go.** Notes don't need to be perfect in the moment, but documenting each finding when it's fresh beats reconstructing it three days later from a screenshot with no context.
+- **Stay chronological.** Notes in the order you did the work — easier to trace an attack chain back and to answer "when did you find X?" from a stakeholder.
+- **Evidence should be unarguable.** Screenshotting a login prompt to prove basic auth isn't enough — pair it with a Wireshark capture showing the plaintext creds in the auth request. Leave no room for the client to argue "but that could be TLS-inside." (See [Deliverables & Remediation](./03-deliverables-remediation.md) for the evidence bar.)
+- **Redact as you screenshot**, not before you submit — waiting until report-writing time means you'll miss things.
+- **Autosave + off-VM backup.** Notes and the report should both live somewhere that survives the pentest VM crashing.
+- **Automate anything you do on every engagement** — scoping doc generation, folder scaffolding, VPN setup script, log-rotation, etc.
+
+---
+
+### Lessons From Real Attack Chains
+
+Small operational learnings that come up in real internal AD engagements — worth internalizing before you go on-site:
+
+- **Start Responder immediately** when you land on an internal AD network. NBT-NS and LLMNR poisoning are the highest-ROI passive attack; run it in the background from minute one and check the log periodically for captured NetNTLMv2 hashes.
+- **BloodHound weird?** Restart with `bloodhound-startup` — it fixes almost every "won't launch / can't connect" issue.
+- **Local admin creds are a pivot, not the goal.** Dump secrets on the local box, look for a **domain** account (often a service account cached locally). If that domain account has no NTLM hash but has an AES key, request a TGT with:
+
+  ```bash
+  getTGT.py -aesKey <aes-key> 'inlanefreight.local/DEV01$'
+  export KRB5CCNAME=DEV01\$.ccache
+  ```
+
+  Then run BloodHound as that account:
+
+  ```bash
+  bloodhound-python -u 'DEV01$' -k -no-pass -d inlanefreight.local \
+    -ns 172.16.5.5 --dc DC01.INLANEFREIGHT.LOCAL -c all --zip
+  ```
+
+- **Bloodhound-start** is the incantation to launch the UI itself once the data is imported.

@@ -43,6 +43,7 @@ Each stage folder holds a set of `.md` files covering one focused topic; section
 - [04 - Web Exploits](./3-exploitation/04-web-exploits.md)
 - [05 - AD Initial Access](./3-exploitation/05-ad-initial-access.md)
 - [06 - Container Escape](./3-exploitation/06-container-escape.md)
+- [07 - Attacking Common Applications](./3-exploitation/07-attacking-common-applications.md)
 
 ### 4. Post-Exploitation
 - [01 - Linux Privilege Escalation](./4-post-exploitation/01-linux-privilege-escalation.md)
