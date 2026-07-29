@@ -37,48 +37,22 @@ Recommended tools:
 
 ---
 
-### Automatic Terminal Logging (tmux + tmux-logging)
+### Automatic Terminal Logging (`script`)
 
-Every command you run should be captured to disk without you thinking about it. `tmux-logging` handles this transparently:
-
-```bash
-git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-touch ~/.tmux.conf
-```
-
-`~/.tmux.conf`:
-
-```
-set -g @plugin 'tmux-plugins/tpm'
-set -g @plugin 'tmux-plugins/tmux-sensible'
-set -g @plugin 'tmux-plugins/tmux-logging'
-
-set -g history-limit 50000
-
-# Initialize TMUX plugin manager (keep at bottom)
-run '~/.tmux/plugins/tpm/tpm'
-```
-
-Load it once:
+Every command you run should be captured to disk without you thinking about it. `script(1)` is preinstalled on every Linux distro and handles this in three lines — no plugins, no config, no session manager to babysit:
 
 ```bash
-tmux source ~/.tmux.conf
-tmux new -s setup
+mkdir -p ~/AEN/logs
+script -f ~/AEN/logs/aen-$(date +%F-%H%M).log
+# ... work ...
+exit   # stops recording
 ```
 
-Then in the session: **`Ctrl-B → Shift-I`** installs the plugin.
+- `-f` flushes after every write, so if your VM crashes mid-session, everything up to the last keystroke is on disk.
+- Each shell gets its own timestamped file — grep across all of them at report-writing time with `grep -rn <pattern> ~/AEN/logs/`.
+- Copy the whole `~/AEN/logs/` directory into your engagement's `evidence/logging/` folder at end of day.
 
-Usage:
-
-| Shortcut | Action |
-|---|---|
-| `Ctrl-B → Shift-P` | Start logging this pane to a file |
-| `exit` | Stop logging |
-| `Ctrl-B → Shift-%` | Split pane vertically |
-| `Ctrl-B → "` | Split pane horizontally |
-| `Ctrl-B → O` | Cycle between panes |
-
-Log files land in your home dir named `tmux-<session>-<pane>-YYYYMMDD-HHMMSS.log` — copy them into your evidence folder at end of day.
+Run it at the top of every new terminal you open, and every command + its output is captured automatically.
 
 ---
 
