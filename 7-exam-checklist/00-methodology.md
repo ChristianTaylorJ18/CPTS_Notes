@@ -21,9 +21,62 @@ touch hosts.txt subdomains.txt urls.txt creds.txt users.txt passwords.txt
 ## First 30 minutes of the exam
 
 - [ ] Read the letter of engagement **twice**. Note: scope, restrictions (no DoS, no phishing), objectives, flag format.
+- [ ] **Start `script -f` in the first terminal** — only ever runs one shell, so use it for the terminal where your primary attack chain runs. Every other terminal opens with its own `script -f` block:
+
+  ```bash
+  mkdir -p ~/AEN/logs
+  script -f ~/AEN/logs/aen-$(date +%F-%H%M).log
+  # ... work ...
+  exit   # stops recording
+  ```
+
 - [ ] `nmap -sn <scope>` — enumerate live hosts, dump to `hosts.txt`.
 - [ ] Kick off full-port scans on every live host in parallel (see [01-recon.md](./01-recon.md)).
 - [ ] While scans run, re-read the objectives and outline the required findings.
+
+## AEN-style day-one enum (the operational drill)
+
+Distilled from the *Lessons from AEN* engagement. Do these in order the moment you have an initial host + domain name (typical case: `inlanefreight.local` + one IP).
+
+- [ ] **AXFR first** — if any host runs DNS, try zone transfer before you fuzz. Zone transfer gives you every vhost for free:
+
+  ```bash
+  dig axfr inlanefreight.local @<dns-ip>
+  ```
+
+- [ ] **Then vhost fuzz to catch what AXFR missed** — long-running, dump it in the background. Baseline the fail-response length first so `-fs` filters cleanly:
+
+  ```bash
+  ## Length of a known-invalid vhost response
+  curl -s -I http://inlanefreight.local -H "HOST: defnotvalid.inlanefreight.local" | grep "Content-Length:"
+
+  ## FFUF with that length filtered out
+  ffuf -u http://inlanefreight.local/ \
+       -w /usr/share/wordlists/seclists/Discovery/DNS/namelist.txt:FUZZ \
+       -H 'Host:FUZZ.inlanefreight.local' \
+       -fs 15157 -t 100
+  ```
+
+- [ ] **On every login page with no other entry**, spray `admin` / `root` / product-default usernames against a small guessable password list before touching anything else. Cheap, high hit rate.
+- [ ] **On every web app**, register any account you can. Registration typically 3× the accessible attack surface.
+- [ ] **Test every input for XSS** — including obscure ones. Tracking numbers, search boxes, contact-form message fields. A tracking-number input that server-side generated PDFs (with no input validation) let this XSS payload read `/etc/passwd`:
+
+  ```html
+  <script>
+    x = new XMLHttpRequest();
+    x.onload = function(){ document.write(this.responseText) };
+    x.open("GET","file:///etc/passwd");
+    x.send();
+  </script>
+  ```
+
+- [ ] **Every 403 during fuzzing gets verb-tampered before you skip it.** `server-status` is the classic — try `GET`, `POST`, `PUT`, `DELETE`, `TRACE`. See [Web Exploits](../3-exploitation/04-web-exploits.md).
+- [ ] **Uploads directory found?** Track where uploads land: capture the request to `upload.php` in Burp → change the verb to one that echoes (`TRACE` is ideal) → add `X-Custom-IP-Authorization: 127.0.0.1` → send. When the response comes back with the path, request that URL in your browser to confirm the delivery location.
+- [ ] **For every command executed on a website** (even ones behind a restricted shell), watch it in Burp — the underlying request is often more forgiving than the UI suggests.
+- [ ] **Contact-us / message fields**: XSS them targeting an admin-viewer to steal the admin cookie.
+- [ ] **Every visible DB → try to dump it** (SQLi + SQLMap → see [SQL Injection](../3-exploitation/04-web-exploits.md)).
+
+The goal of this pass is one specific outcome: **find a web-facing machine whose `ipconfig` shows an internal-only subnet**. Once you find it, get a shell → SSH creds for persistence → escalate to root → set up the pivot. That's the pattern that unlocks the rest of the environment.
 
 ## When you're stuck (the 45-minute rule)
 

